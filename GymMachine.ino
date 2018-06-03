@@ -1,7 +1,12 @@
+// ---------------------------------------------------------------------------------
+// Wiring
 // Teensy UART Tx to be connected to light blue next to black wire on Hoverboard
+// ---------------------------------------------------------------------------------
 
 // Pin 13 has an LED connected on most Arduino boards.
 int led = 13;
+
+byte r_tbl[200];
 
 void setup() {
   // Initialize serial/USB communication at 9600 bits per second:
@@ -125,6 +130,13 @@ void motor_up_down_test( int max )
 
 void hall_sensors_test()
 {
+  // Enum representing hall sensors states
+  // MSB   = hall sensor 1
+  // Midel = hall sensor 2
+  // LSB   = hall sensor 3
+  // At any given time one or two (out of the three) sensors can have a value of 1.
+  // The three hall sensor wires should be connected such that the state tansirions
+  // match the enum order (from HALL_100 down to HALL101) when the wheel is turning CW.
   enum {
     HALL_100 = 0b100,
     HALL_110 = 0b110,
@@ -134,12 +146,13 @@ void hall_sensors_test()
     HALL_101 = 0b101
   };
 
-  // LUT for hal sensors transitions - [prev_state][state].
+  // LUT ( hall_tbl[prev_state][state] ) for mapping hall sensors transitions to ticks.
   // +1 -> CW tick
   // -1 -> CCW tick
   // 00 -> no transition
   // NA -> invalid transition
-  // There are 88-89 ticks per revolution
+  // There are 88-90 ticks per revolution
+  #define ticks_per_rotation 89
   #define NA 99
   signed char hall_tbl[8][8] = { NA, NA, NA, NA, NA, NA, NA, NA,
                                  NA, 00, NA, -1, NA, +1, NA, NA,
@@ -155,15 +168,11 @@ void hall_sensors_test()
   static int h2, h2_prev;
   static int h3, h3_prev;
   
-  h1_prev = h1 = digitalRead(14);
-  h2_prev = h2 = digitalRead(15);
-  h3_prev = h3 = digitalRead(16);
-    
   uint hall_state = 0;
   uint hall_state_prev = 0;
   uint bad_state_cntr = 0;
     
-  // Spin util first valid transition
+  // Loop until detecting first valid transition
   while( hall_state == hall_state_prev ||
          hall_tbl[hall_state_prev][hall_state] == NA )
   {
@@ -174,29 +183,33 @@ void hall_sensors_test()
     hall_state = h1 << 2 | h2 << 1 | h3;
     Serial.printf("hall_state NA\n");
   }
-    
-  // Spin and calulate hall ticks
+
+  // Loop and calulate hall ticks
   while( 1 )
   {
+    //int i = 0;
+    
     // Get hall sensors state
     h1 = digitalRead(14);
     h2 = digitalRead(15);
     h3 = digitalRead(16);
     hall_state = h1 << 2 | h2 << 1 | h3;
 
-    // Get hall tick based on current and previous states.
-    // Zero out invalid transitions.
+    // Map hall sensors transition to rotation ticks (0, +1, -1)
+    // Detect invalid transitions.
     int tick = hall_tbl[hall_state_prev][hall_state];
     if( tick == NA ) {
       bad_state_cntr++;
       tick = 0;
     }
     ticks += tick;
-
+    float rotations = (float) ticks / (float) ticks_per_rotation;
     hall_state_prev = hall_state;
     
-    Serial.printf("ticks=%d, bad_state_cntr=%d\n", ticks, bad_state_cntr);
+    // Print out hall sensor ticks
+    Serial.printf("ticks=%d, rotation=%.2f, bad_state_cntr=%d\n", ticks, rotations, bad_state_cntr);
     //Serial.printf("hall state: %d%d%d\n", h1,h2,h3);
+    //serial_write_frame( Serial1, 100 );
   }
 }
 
