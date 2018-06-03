@@ -3,10 +3,18 @@
 // Teensy UART Tx to be connected to light blue next to black wire on Hoverboard
 // ---------------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------------
+// --------------------------------- Golbal Data -----------------------------------
+// ---------------------------------------------------------------------------------
+
 // Pin 13 has an LED connected on most Arduino boards.
 int led = 13;
 
-byte r_tbl[200];
+
+
+// ---------------------------------------------------------------------------------
+// ----------------------------------- Methods -------------------------------------
+// ---------------------------------------------------------------------------------
 
 void setup() {
   // Initialize serial/USB communication at 9600 bits per second:
@@ -128,6 +136,28 @@ void motor_up_down_test( int max )
 
 //-------------------------------------------------------------------------
 
+// Workout profile table.
+// Holding 8 bits resistance value for each cable pull distance in cm.
+byte p_table[200];
+
+// LUT ( hall_tbl[prev_state][state] ) for mapping hall sensors transitions to ticks.
+// +1 -> CW tick
+// -1 -> CCW tick
+// 00 -> no transition
+// NA -> invalid transition
+// There are 88-90 ticks per revolution
+#define TICKS_PER_ROTATION 89
+#define WHEEL_DIAMETER 12.5 
+#define NA 99
+signed char hall_tbl[8][8] = { NA, NA, NA, NA, NA, NA, NA, NA,
+                               NA, 00, NA, -1, NA, +1, NA, NA,
+                               NA, NA, 00, +1, NA, NA, -1, NA,
+                               NA, +1, -1, 00, NA, NA, NA, NA,
+                               NA, NA, NA, NA, 00, -1, +1, NA,
+                               NA, -1, NA, NA, +1, 00, NA, NA,
+                               NA, NA, +1, NA, -1, NA, 00, NA,
+                               NA, NA, NA, NA, NA, NA, NA, NA };
+                               
 void hall_sensors_test()
 {
   // Enum representing hall sensors states
@@ -146,23 +176,6 @@ void hall_sensors_test()
     HALL_101 = 0b101
   };
 
-  // LUT ( hall_tbl[prev_state][state] ) for mapping hall sensors transitions to ticks.
-  // +1 -> CW tick
-  // -1 -> CCW tick
-  // 00 -> no transition
-  // NA -> invalid transition
-  // There are 88-90 ticks per revolution
-  #define ticks_per_rotation 89
-  #define NA 99
-  signed char hall_tbl[8][8] = { NA, NA, NA, NA, NA, NA, NA, NA,
-                                 NA, 00, NA, -1, NA, +1, NA, NA,
-                                 NA, NA, 00, +1, NA, NA, -1, NA,
-                                 NA, +1, -1, 00, NA, NA, NA, NA,
-                                 NA, NA, NA, NA, 00, -1, +1, NA,
-                                 NA, -1, NA, NA, +1, 00, NA, NA,
-                                 NA, NA, +1, NA, -1, NA, 00, NA,
-                                 NA, NA, NA, NA, NA, NA, NA, NA };
-  
   int ticks = 0;
   static int h1, h1_prev;
   static int h2, h2_prev;
@@ -203,11 +216,11 @@ void hall_sensors_test()
       tick = 0;
     }
     ticks += tick;
-    float rotations = (float) ticks / (float) ticks_per_rotation;
+    uint rotations = (PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION;
     hall_state_prev = hall_state;
     
     // Print out hall sensor ticks
-    Serial.printf("ticks=%d, rotation=%.2f, bad_state_cntr=%d\n", ticks, rotations, bad_state_cntr);
+    Serial.printf("ticks=%d, rotation=%u, bad_state_cntr=%d\n", ticks, rotations, bad_state_cntr);
     //Serial.printf("hall state: %d%d%d\n", h1,h2,h3);
     //serial_write_frame( Serial1, 100 );
   }
