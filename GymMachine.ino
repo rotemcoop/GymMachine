@@ -133,6 +133,22 @@ void hall_sensors_test()
     HALL_001 = 0b001,
     HALL_101 = 0b101
   };
+
+  // LUT for hal sensors transitions - [prev_state][state].
+  // +1 -> CW tick
+  // -1 -> CCW tick
+  // 00 -> no transition
+  // NA -> invalid transition
+  // There are 88-89 ticks per revolution
+  #define NA 99
+  signed char hall_tbl[8][8] = { NA, NA, NA, NA, NA, NA, NA, NA,
+                                 NA, 00, NA, -1, NA, +1, NA, NA,
+                                 NA, NA, 00, +1, NA, NA, -1, NA,
+                                 NA, +1, -1, 00, NA, NA, NA, NA,
+                                 NA, NA, NA, NA, 00, -1, +1, NA,
+                                 NA, -1, NA, NA, +1, 00, NA, NA,
+                                 NA, NA, +1, NA, -1, NA, 00, NA,
+                                 NA, NA, NA, NA, NA, NA, NA, NA };
   
   int ticks = 0;
   static int h1, h1_prev;
@@ -143,102 +159,44 @@ void hall_sensors_test()
   h2_prev = h2 = digitalRead(15);
   h3_prev = h3 = digitalRead(16);
     
-  uint hall_state = HALL_100;
-  uint hall_state_prev = hall_state;
-  
+  uint hall_state = 0;
+  uint hall_state_prev = 0;
+  uint bad_state_cntr = 0;
+    
+  // Spin util first valid transition
+  while( hall_state == hall_state_prev ||
+         hall_tbl[hall_state_prev][hall_state] == NA )
+  {
+    h1 = digitalRead(14);
+    h2 = digitalRead(15);
+    h3 = digitalRead(16);
+    hall_state_prev = hall_state;
+    hall_state = h1 << 2 | h2 << 1 | h3;
+    Serial.printf("hall_state NA\n");
+  }
+    
+  // Spin and calulate hall ticks
   while( 1 )
   {
+    // Get hall sensors state
     h1 = digitalRead(14);
     h2 = digitalRead(15);
     h3 = digitalRead(16);
     hall_state = h1 << 2 | h2 << 1 | h3;
 
-    switch (hall_state_prev)
-    {
-      case HALL_100:
-        if( hall_state == HALL_110 ) {
-          ticks++;
-        }
-        else if( hall_state == HALL_101 ) {
-          ticks--;
-        }
-        break;
-
-      case HALL_110:
-        if( hall_state == HALL_010 ) {
-          ticks++;
-        }
-        else if( hall_state == HALL_100 ) {
-          ticks--;
-        }
-        break;
-
-      case HALL_010:
-        if( hall_state == HALL_011 ) {
-          ticks++;
-        }
-        else if( hall_state == HALL_110 ) {
-          ticks--;
-        }
-        break;
-      
-      case HALL_011:
-        if( hall_state == HALL_001 ) {
-          ticks++;
-        }
-        else if( hall_state == HALL_010 ) {
-          ticks--;
-        }
-        break;
-
-      case HALL_001:
-        if( hall_state == HALL_101 ) {
-          ticks++;
-        }
-        else if( hall_state == HALL_011 ) {
-          ticks--;
-        }
-        break;
-
-      case HALL_101:
-        if( hall_state == HALL_100 ) {
-          ticks++;
-        }
-        else if( hall_state == HALL_001 ) {
-          ticks--;
-        }
-        break;
+    // Get hall tick based on current and previous states.
+    // Zero out invalid transitions.
+    int tick = hall_tbl[hall_state_prev][hall_state];
+    if( tick == NA ) {
+      bad_state_cntr++;
+      tick = 0;
     }
-    hall_state_prev = hall_state
-    Serial.printf("hall state: %d%d%d\n", h1,h2,h3);
+    ticks += tick;
+
+    hall_state_prev = hall_state;
     
-    
-    /*
-    if( h1 == HIGH && h1_prev == LOW ) {
-      if( hall == HALL2 ) { ticks++; }
-      if( hall == HALL3 ) { ticks--; }
-      hall = HALL1;
-    }
-
-    if( h2 == HIGH && h2_prev == LOW ) {
-      //if( hall == HALL2 ) { ticks++; }
-      //if( hall == HALL3 ) { ticks--; }
-      hall = HALL2;
-    }
-
-    if( h3 == HIGH && h3_prev == LOW ) {
-      //if( hall == HALL2 ) { ticks++; }
-      //if( hall == HALL3 ) { ticks--; }
-      hall = HALL3;
-    }
-
-    h1_prev = h1;
-    h2_prev = h2;
-    h3_prev = h3;
-    
-    Serial.printf("ticks=%d\n", ticks);
-    //Serial.printf("Hall values: %d, %d, %d\n", h1, h2, h3);
-    */
+    Serial.printf("ticks=%d, bad_state_cntr=%d\n", ticks, bad_state_cntr);
+    //Serial.printf("hall state: %d%d%d\n", h1,h2,h3);
   }
 }
 
