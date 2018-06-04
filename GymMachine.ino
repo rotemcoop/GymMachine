@@ -270,9 +270,8 @@ byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
 
 void hall_sensors_test()
 {
-  
-
   int ticks = 0;
+  /*
   static int h1;
   static int h2;
   static int h3;
@@ -280,8 +279,12 @@ void hall_sensors_test()
   uint hall_state = 0;
   uint hall_state_prev = 0;
   uint bad_state_cntr = 0;
+  */
     
-  // Loop until detecting first valid transition
+  // Wait for motor motion.
+  while( hall_right_ticks() == ticks );
+
+  /* 
   while( hall_state == hall_state_prev ||
          hall_tbl[hall_state_prev][hall_state] == NA )
   {
@@ -292,12 +295,14 @@ void hall_sensors_test()
     hall_state = h1 << 2 | h2 << 1 | h3;
     Serial.printf("hall_state NA\n");
   }
-
-  // Loop and calulate hall ticks
+  */
+  
+  // Based on distance cabled is pulled aply torque.
   while( 1 )
   {
     //int i = 0;
-    
+    ticks = hall_right_ticks();
+    /*
     // Get hall sensors state
     h1 = digitalRead(14);
     h2 = digitalRead(15);
@@ -312,6 +317,8 @@ void hall_sensors_test()
       tick = 0;
     }
     ticks += tick;
+    */
+    
     uint distance = (PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION;
     if( distance >= sizeof(prf_tbl) ) {
       distance = sizeof(prf_tbl) - 1;
@@ -319,13 +326,14 @@ void hall_sensors_test()
     uint torque = prf_tbl[ distance ];
         
     // Print out hall sensor ticks
-    Serial.printf("ticks=%d, distance=%u, torque=%d, bad_state_cntr=%d\n", ticks, distance, torque, bad_state_cntr);
+    Serial.printf("ticks=%d, distance=%u, torque=%d \n", ticks, distance, torque );
     motor_right_torque( -torque );
     
     //Serial.printf("hall state: %d%d%d\n", h1,h2,h3);
     
-
+    /*
     hall_state_prev = hall_state;
+    */
   }
 }
 
