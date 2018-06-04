@@ -8,6 +8,11 @@ typedef enum {
   MOTOR_LEFT
 } motor_t;
 
+typedef enum {
+  HALL_RIGHT,
+  HALL_LEFT
+} hall_t;
+
 // ---------------------------------------------------------------------------------
 // --------------------------------- Golbal Data -----------------------------------
 // ---------------------------------------------------------------------------------
@@ -75,13 +80,21 @@ inline void motor_left_torque( int16_t value ) {
   serial_write_frame( Serial2, value );
 }
 
+inline void motor_both_torque( int16_t value ) {
+  serial_write_frame( Serial1, value );
+  serial_write_frame( Serial2, value );
+}
+
 void motor_wind_back()
 {
   bool is_motor_turning = true;
   const uint torque = -100;
+
+  motor_both_torque( torque );
+  delay( 2000 );
+  
   while( is_motor_turning ) {
-    motor_right_torque( torque );
-    motor_left_torque( torque );
+    motor_both_torque( torque );
   }
 }
 
@@ -138,10 +151,107 @@ void motor_up_down_test( int max )
   }
 }
 
-//-------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------
+// -------------------------------- Hall Sensors -----------------------------------
+// ---------------------------------------------------------------------------------
 
+// Geometry
+#define TICKS_PER_ROTATION 89
+#define WHEEL_DIAMETER 12.5
+
+// LUT ( hall_tbl[prev_state][state] ) for mapping hall sensors transitions to ticks.
+// +1 -> CW tick
+// -1 -> CCW tick
+// 00 -> no transition
+// NA -> invalid transition
+// There are 88-90 ticks per revolution
+#define NA 99
+const signed char hall_tbl[8][8] = { NA, NA, NA, NA, NA, NA, NA, NA,
+                                     NA, 00, NA, -1, NA, +1, NA, NA,
+                                     NA, NA, 00, +1, NA, NA, -1, NA,
+                                     NA, +1, -1, 00, NA, NA, NA, NA,
+                                     NA, NA, NA, NA, 00, -1, +1, NA,
+                                     NA, -1, NA, NA, +1, 00, NA, NA,
+                                     NA, NA, +1, NA, -1, NA, 00, NA,
+                                     NA, NA, NA, NA, NA, NA, NA, NA };
+
+ // Enum representing hall sensors states
+  // MSB   = hall sensor 1
+  // Midel = hall sensor 2
+  // LSB   = hall sensor 3
+  // At any given time one or two (out of the three) sensors can have a value of 1.
+  // The three hall sensor wires should be connected such that the state tansirions
+  // match the enum order (from HALL_100 down to HALL101) when the wheel is turning CW.
+  enum {
+    HALL_100 = 0b100,
+    HALL_110 = 0b110,
+    HALL_010 = 0b010,
+    HALL_011 = 0b011,
+    HALL_001 = 0b001,
+    HALL_101 = 0b101
+  };                                    
+                               
+// ---------------------------------------------------------------------------------
+
+// Return right motor ticks since start-up.
+// This function has to be call frquent enugh to capture all hall sensor transitions.
+//
+int hall_right_ticks()
+{
+  static int ticks = 0;
+  static uint hall_state = 0;
+  static uint hall_state_prev = 0;
+  static uint bad_state_cntr = 0;
+
+  int h1 = digitalRead( 14 );
+  int h2 = digitalRead( 15 );
+  int h3 = digitalRead( 16 );
+  hall_state_prev = hall_state;
+  hall_state = h1 << 2 | h2 << 1 | h3;
+
+  // Map hall sensors transition to rotation ticks (0, +1, -1)
+  // Detect invalid transitions.
+  int tick = hall_tbl[hall_state_prev][hall_state];
+  if( tick == NA ) {
+    bad_state_cntr++;
+    tick = 0;
+  }
+  ticks += tick;
+  return ticks;  
+}
+
+// ---------------------------------------------------------------------------------
+
+// Return left motor ticks since start-up.
+// This function has to be call frquent enugh to capture all hall sensor transitions.
+//
+int hall_left_ticks()
+{
+  static int ticks = 0;
+  static uint hall_state = 0;
+  static uint hall_state_prev = 0;
+  static uint bad_state_cntr = 0;
+
+  int h1 = digitalRead( 17 );
+  int h2 = digitalRead( 18 );
+  int h3 = digitalRead( 19 );
+  hall_state_prev = hall_state;
+  hall_state = h1 << 2 | h2 << 1 | h3;
+
+  // Map hall sensors transition to rotation ticks (0, +1, -1)
+  // Detect invalid transitions.
+  int tick = hall_tbl[hall_state_prev][hall_state];
+  if( tick == NA ) {
+    bad_state_cntr++;
+    tick = 0;
+  }
+  ticks += tick;
+  return ticks;  
+}
+
+// ---------------------------------------------------------------------------------
 // Workout profile table.
-// Holding 8 bits resistance value for each cable pull distance in cm.
+// Specifies 8 bits resistance value for each cable pull distance in cm.
 byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                        10,  11,  12,  13,  14,  15,  16,  17,  18,  19,
                        20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
@@ -158,46 +268,14 @@ byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                       130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
-// LUT ( hall_tbl[prev_state][state] ) for mapping hall sensors transitions to ticks.
-// +1 -> CW tick
-// -1 -> CCW tick
-// 00 -> no transition
-// NA -> invalid transition
-// There are 88-90 ticks per revolution
-#define TICKS_PER_ROTATION 89
-#define WHEEL_DIAMETER 12.5 
-#define NA 99
-signed char hall_tbl[8][8] = { NA, NA, NA, NA, NA, NA, NA, NA,
-                               NA, 00, NA, -1, NA, +1, NA, NA,
-                               NA, NA, 00, +1, NA, NA, -1, NA,
-                               NA, +1, -1, 00, NA, NA, NA, NA,
-                               NA, NA, NA, NA, 00, -1, +1, NA,
-                               NA, -1, NA, NA, +1, 00, NA, NA,
-                               NA, NA, +1, NA, -1, NA, 00, NA,
-                               NA, NA, NA, NA, NA, NA, NA, NA };
-                               
 void hall_sensors_test()
 {
-  // Enum representing hall sensors states
-  // MSB   = hall sensor 1
-  // Midel = hall sensor 2
-  // LSB   = hall sensor 3
-  // At any given time one or two (out of the three) sensors can have a value of 1.
-  // The three hall sensor wires should be connected such that the state tansirions
-  // match the enum order (from HALL_100 down to HALL101) when the wheel is turning CW.
-  enum {
-    HALL_100 = 0b100,
-    HALL_110 = 0b110,
-    HALL_010 = 0b010,
-    HALL_011 = 0b011,
-    HALL_001 = 0b001,
-    HALL_101 = 0b101
-  };
+  
 
   int ticks = 0;
-  static int h1, h1_prev;
-  static int h2, h2_prev;
-  static int h3, h3_prev;
+  static int h1;
+  static int h2;
+  static int h3;
   
   uint hall_state = 0;
   uint hall_state_prev = 0;
@@ -275,6 +353,7 @@ void setup() {
 }
 
 //---------------------------------------------------------------------------
+
 void loop()
 {
   // Blink the LED
