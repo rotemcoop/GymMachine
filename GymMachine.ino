@@ -3,6 +3,11 @@
 // Teensy UART Tx to be connected to light blue next to black wire on Hoverboard
 // ---------------------------------------------------------------------------------
 
+typedef enum {
+  MOTOR_RIGHT,
+  MOTOR_LEFT
+} motor_t;
+
 // ---------------------------------------------------------------------------------
 // --------------------------------- Golbal Data -----------------------------------
 // ---------------------------------------------------------------------------------
@@ -13,31 +18,8 @@ int led = 13;
 
 
 // ---------------------------------------------------------------------------------
-// ----------------------------------- Methods -------------------------------------
+// ---------------------------- Serial Communication -------------------------------
 // ---------------------------------------------------------------------------------
-
-void setup() {
-  // Initialize serial/USB communication at 9600 bits per second:
-  Serial.begin(9600);
-  
-  // Initialize the UART1 and UART3 - 9 bits mode
-  Serial1.begin (26300, SERIAL_9N1);
-  Serial3.begin (26300, SERIAL_9N1);
-
-  // Initialize hall sensors
-  pinMode(14, INPUT_PULLUP);
-  pinMode(15, INPUT_PULLUP);
-  pinMode(16, INPUT_PULLUP);
-
-  pinMode(17, INPUT_PULLUP);
-  pinMode(18, INPUT_PULLUP);
-  pinMode(19, INPUT_PULLUP);
-
-  // initialize the digital pin as an output.
-  pinMode(led, OUTPUT);
-}
-
-//---------------------------------------------------------------------------
 
 const uint8_t    GYRO_FRAME_LENGTH = 6;
 const uint16_t   GYRO_FRAME_START = 256;
@@ -65,7 +47,7 @@ void serial_write_frame(HardwareSerial serial, int16_t value)
 // Connect Serial1 Tx to Serial3 Rx
 // Connect Serial1 Rx to Serial3 Tx
 
-void uart1_to_uart3_test( uint16_t value )
+void serial1_to_serial3_test( uint16_t value )
 {
   // Write a frame out of UART1
   serial_write_frame( Serial1, value );
@@ -78,6 +60,28 @@ void uart1_to_uart3_test( uint16_t value )
     incomingByte = Serial3.read();
     Serial.print("UART received: ");
     Serial.println(incomingByte, DEC);
+  }
+}
+
+// ---------------------------------------------------------------------------------
+// ------------------------------------ Motor --------------------------------------
+// ---------------------------------------------------------------------------------
+
+inline void motor_right_torque( int16_t value ) {
+  serial_write_frame( Serial1, value );
+}
+
+inline void motor_left_torque( int16_t value ) {
+  serial_write_frame( Serial2, value );
+}
+
+void motor_wind_back()
+{
+  bool is_motor_turning = true;
+  const uint torque = -100;
+  while( is_motor_turning ) {
+    motor_right_torque( torque );
+    motor_left_torque( torque );
   }
 }
 
@@ -106,7 +110,7 @@ void motor_up_down_test( int max )
     Serial.println( "----------------------------" );
     for(int j=0; j<loop_cnt; j++) {
       delay(loop_delay);
-      serial_write_frame( Serial1, i );
+      motor_right_torque( i );
       print_hall_sensors();      
     }    
   }
@@ -117,7 +121,7 @@ void motor_up_down_test( int max )
     Serial.println( "----------------------------" );
     for(int j=0; j<loop_cnt; j++) {
       delay(loop_delay);
-      serial_write_frame( Serial1, i );
+      motor_right_torque( i );
       print_hall_sensors(); 
     }    
   }
@@ -128,7 +132,7 @@ void motor_up_down_test( int max )
     Serial.println( "----------------------------" );
     for(int j=0; j<loop_cnt; j++) {
       delay(loop_delay);
-      serial_write_frame( Serial1, i );
+      motor_right_torque( i );
       print_hall_sensors();      
     }    
   }
@@ -238,9 +242,10 @@ void hall_sensors_test()
         
     // Print out hall sensor ticks
     Serial.printf("ticks=%d, distance=%u, torque=%d, bad_state_cntr=%d\n", ticks, distance, torque, bad_state_cntr);
+    motor_right_torque( -torque );
     
     //Serial.printf("hall state: %d%d%d\n", h1,h2,h3);
-    serial_write_frame( Serial1, -torque );
+    
 
     hall_state_prev = hall_state;
   }
@@ -248,6 +253,28 @@ void hall_sensors_test()
 
 //-------------------------------------------------------------------------
 
+void setup() {
+  // Initialize serial/USB communication at 9600 bits per second:
+  Serial.begin(9600);
+  
+  // Initialize the UART1 and UART3 - 9 bits mode
+  Serial1.begin (26300, SERIAL_9N1);
+  Serial3.begin (26300, SERIAL_9N1);
+
+  // Initialize hall sensors
+  pinMode(14, INPUT_PULLUP);
+  pinMode(15, INPUT_PULLUP);
+  pinMode(16, INPUT_PULLUP);
+
+  pinMode(17, INPUT_PULLUP);
+  pinMode(18, INPUT_PULLUP);
+  pinMode(19, INPUT_PULLUP);
+
+  // initialize the digital pin as an output.
+  pinMode(led, OUTPUT);
+}
+
+//---------------------------------------------------------------------------
 void loop()
 {
   // Blink the LED
@@ -256,7 +283,7 @@ void loop()
   //digitalWrite(led, LOW);    // turn the LED off by making the voltage LOW
   //delay(2000);               // wait for a second
   //motor_up_down_test( 1 );
-  serial_write_frame( Serial1, 0 );
+  motor_right_torque( 0 );
   //print_hall_sensors();
   hall_sensors_test();
   Serial.println( "----------------------------" );
