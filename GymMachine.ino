@@ -138,7 +138,21 @@ void motor_up_down_test( int max )
 
 // Workout profile table.
 // Holding 8 bits resistance value for each cable pull distance in cm.
-byte p_table[200];
+byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
+                       10,  11,  12,  13,  14,  15,  16,  17,  18,  19,
+                       20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
+                       30,  31,  32,  33,  34,  35,  36,  37,  38,  38,
+                       40,  41,  42,  43,  44,  45,  46,  47,  48,  49,
+                       50,  51,  52,  53,  54,  55,  56,  57,  58,  59,
+                       60,  61,  62,  63,  64,  65,  66,  67,  68,  69,
+                       70,  71,  72,  73,  74,  75,  76,  77,  78,  79,
+                       80,  81,  82,  83,  84,  85,  86,  87,  88,  89,
+                       90,  91,  92,  93,  94,  95,  96,  97,  98,  99,
+                      100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+                      110, 111, 112, 113, 114, 115, 116, 117, 118, 119,
+                      120, 121, 122, 123, 124, 125, 126, 127, 128, 129,
+                      130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
+                      140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
 // LUT ( hall_tbl[prev_state][state] ) for mapping hall sensors transitions to ticks.
 // +1 -> CW tick
@@ -216,13 +230,19 @@ void hall_sensors_test()
       tick = 0;
     }
     ticks += tick;
-    uint rotations = (PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION;
-    hall_state_prev = hall_state;
-    
+    uint distance = (PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION;
+    if( distance >= sizeof(prf_tbl) ) {
+      distance = sizeof(prf_tbl) - 1;
+    }
+    uint torque = prf_tbl[ distance ];
+        
     // Print out hall sensor ticks
-    Serial.printf("ticks=%d, rotation=%u, bad_state_cntr=%d\n", ticks, rotations, bad_state_cntr);
+    Serial.printf("ticks=%d, distance=%u, torque=%d, bad_state_cntr=%d\n", ticks, distance, torque, bad_state_cntr);
+    
     //Serial.printf("hall state: %d%d%d\n", h1,h2,h3);
-    //serial_write_frame( Serial1, 100 );
+    serial_write_frame( Serial1, -torque );
+
+    hall_state_prev = hall_state;
   }
 }
 
