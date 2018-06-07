@@ -281,7 +281,7 @@ byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                       130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
-void hall_sensors_test()
+void workout()
 {
   // Wait for motor motion.
   while( hall_right_ticks() == 0 );
@@ -339,7 +339,7 @@ void loop()
   //motor_up_down_test( 1 );
   motor_right_torque( 0 );
   //hall_right_print();
-  hall_sensors_test();
+  workout();
   Serial.println( "----------------------------" );
 
   //int incomingByte;
