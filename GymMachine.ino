@@ -49,6 +49,7 @@ void serial_write_frame(HardwareSerial serial, int16_t value)
 
 //-------------------------------------------------------------------------
 
+// Serial1 and Serial3 testing.
 // Connect Serial1 Tx to Serial3 Rx
 // Connect Serial1 Rx to Serial3 Tx
 
@@ -85,27 +86,26 @@ inline void motor_both_torque( int16_t value ) {
   serial_write_frame( Serial2, value );
 }
 
+// ---------------------------------------------------------------------------------
+
 void motor_wind_back()
 {
-  bool is_motor_turning = true;
   const uint torque = -100;
+  int right_ticks;
+  int left_ticks;
 
-  motor_both_torque( torque );
-  delay( 2000 );
-  
-  while( is_motor_turning ) {
-    motor_both_torque( torque );
-  }
-}
-
-//-------------------------------------------------------------------------
-
-void print_hall_sensors()
-{  
-  int h1 = digitalRead(14);
-  int h2 = digitalRead(15);
-  int h3 = digitalRead(16);
-  Serial.printf("Hall values: %d, %d, %d\n", h1, h2, h3);
+  // Continue to apply torque as long as motors are turning.
+  do {
+    right_ticks = hall_right_ticks();
+    left_ticks = hall_left_ticks();
+    
+    for(int i=0; i>1000; i++) {
+      motor_both_torque( torque );
+      hall_right_ticks();
+      hall_left_ticks();
+    }
+  } while (right_ticks != hall_right_ticks() ||
+           left_ticks != hall_left_ticks());
 }
 
 //-------------------------------------------------------------------------
@@ -124,7 +124,7 @@ void motor_up_down_test( int max )
     for(int j=0; j<loop_cnt; j++) {
       delay(loop_delay);
       motor_right_torque( i );
-      print_hall_sensors();      
+      hall_right_print();      
     }    
   }
 
@@ -135,7 +135,7 @@ void motor_up_down_test( int max )
     for(int j=0; j<loop_cnt; j++) {
       delay(loop_delay);
       motor_right_torque( i );
-      print_hall_sensors(); 
+      hall_right_print(); 
     }    
   }
 
@@ -146,7 +146,7 @@ void motor_up_down_test( int max )
     for(int j=0; j<loop_cnt; j++) {
       delay(loop_delay);
       motor_right_torque( i );
-      print_hall_sensors();      
+      hall_right_print();      
     }    
   }
 }
@@ -250,6 +250,19 @@ int hall_left_ticks()
 }
 
 // ---------------------------------------------------------------------------------
+
+void hall_right_print()
+{  
+  int h1 = digitalRead(14);
+  int h2 = digitalRead(15);
+  int h3 = digitalRead(16);
+  Serial.printf("Hall values: %d, %d, %d\n", h1, h2, h3);
+}
+
+// ---------------------------------------------------------------------------------
+// ---------------------------------- Workout --------------------------------------
+// ---------------------------------------------------------------------------------
+
 // Workout profile table.
 // Specifies 8 bits resistance value for each cable pull distance in cm.
 byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
@@ -270,74 +283,28 @@ byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
 
 void hall_sensors_test()
 {
-  int ticks = 0;
-  /*
-  static int h1;
-  static int h2;
-  static int h3;
-  
-  uint hall_state = 0;
-  uint hall_state_prev = 0;
-  uint bad_state_cntr = 0;
-  */
-    
   // Wait for motor motion.
-  while( hall_right_ticks() == ticks );
+  while( hall_right_ticks() == 0 );
 
-  /* 
-  while( hall_state == hall_state_prev ||
-         hall_tbl[hall_state_prev][hall_state] == NA )
-  {
-    h1 = digitalRead(14);
-    h2 = digitalRead(15);
-    h3 = digitalRead(16);
-    hall_state_prev = hall_state;
-    hall_state = h1 << 2 | h2 << 1 | h3;
-    Serial.printf("hall_state NA\n");
-  }
-  */
-  
-  // Based on distance cabled is pulled aply torque.
+  // Aply torqueBased based on distance the cabled is pulled.
   while( 1 )
   {
-    //int i = 0;
-    ticks = hall_right_ticks();
-    /*
-    // Get hall sensors state
-    h1 = digitalRead(14);
-    h2 = digitalRead(15);
-    h3 = digitalRead(16);
-    hall_state = h1 << 2 | h2 << 1 | h3;
-
-    // Map hall sensors transition to rotation ticks (0, +1, -1)
-    // Detect invalid transitions.
-    int tick = hall_tbl[hall_state_prev][hall_state];
-    if( tick == NA ) {
-      bad_state_cntr++;
-      tick = 0;
-    }
-    ticks += tick;
-    */
-    
+    int ticks = hall_right_ticks();
     uint distance = (PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION;
     if( distance >= sizeof(prf_tbl) ) {
       distance = sizeof(prf_tbl) - 1;
     }
     uint torque = prf_tbl[ distance ];
-        
-    // Print out hall sensor ticks
-    Serial.printf("ticks=%d, distance=%u, torque=%d \n", ticks, distance, torque );
     motor_right_torque( -torque );
-    
-    //Serial.printf("hall state: %d%d%d\n", h1,h2,h3);
-    
-    /*
-    hall_state_prev = hall_state;
-    */
+        
+    // Print out ticks, distance and torque.
+    Serial.printf("ticks=%d, distance=%u, torque=%d \n", ticks, distance, torque );
   }
 }
 
-//-------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------
+// --------------------------------- Main Loop -------------------------------------
+// ---------------------------------------------------------------------------------
 
 void setup() {
   // Initialize serial/USB communication at 9600 bits per second:
@@ -371,7 +338,7 @@ void loop()
   //delay(2000);               // wait for a second
   //motor_up_down_test( 1 );
   motor_right_torque( 0 );
-  //print_hall_sensors();
+  //hall_right_print();
   hall_sensors_test();
   Serial.println( "----------------------------" );
 
