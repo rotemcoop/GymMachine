@@ -293,9 +293,16 @@ byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
 
 void workout()
 {
-  // Wait for motor motion.
-  //while( hall_right_ticks() == 0 );
+  // Wait for cables pull.
+  while( hall_right_ticks() == 0 && hall_left_ticks() == 0 ) {
+    Serial.printf("Waiting for cables pull...\n");
+    motor_both_torque( 0 );  
+  }
+  hall_right_bad_state_cntr = 0;
+  hall_left_bad_state_cntr = 0;
 
+  //--------------------------------------------------
+  
   // Aply torqueBased based on distance the cabled is pulled. 
   while( 1 )
   {
