@@ -291,7 +291,9 @@ byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                       130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
-void workout()
+// ---------------------------------------------------------------------------------
+
+void workout_wait_for_start()
 {
   // Wait for cables pull.
   while( hall_right_ticks() == 0 && hall_left_ticks() == 0 ) {
@@ -299,10 +301,13 @@ void workout()
     motor_both_torque( 0 );  
   }
   hall_right_bad_state_cntr = 0;
-  hall_left_bad_state_cntr = 0;
+  hall_left_bad_state_cntr = 0;  
+}
 
-  //--------------------------------------------------
-  
+// ---------------------------------------------------------------------------------
+
+void workout()
+{
   // Aply torqueBased based on distance the cabled is pulled. 
   while( 1 )
   {
@@ -370,8 +375,7 @@ void loop()
   //digitalWrite(led, LOW);    // turn the LED off by making the voltage LOW
   //delay(2000);               // wait for a second
   //motor_up_down_test( 250 );
-  motor_both_torque( 0 );
-  //hall_right_print();
+  workout_wait_for_start();
   workout();
   Serial.println( "----------------------------" );
 
