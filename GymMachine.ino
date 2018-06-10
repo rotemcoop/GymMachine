@@ -30,7 +30,7 @@ const uint8_t    GYRO_FRAME_LENGTH = 6;
 const uint16_t   GYRO_FRAME_START = 256;
 const uint8_t    GYRO_CONTACT_CLOSED_BYTE = 85;
 
-void serial_write_frame(HardwareSerial serial, int16_t value)
+void serial_write_frame(HardwareSerial* serial, int16_t value)
 {
   // Set up a frame simulating gyroscope move on gyro daughterboard
   uint16_t uart_frame[GYRO_FRAME_LENGTH] = {
@@ -43,7 +43,7 @@ void serial_write_frame(HardwareSerial serial, int16_t value)
 
   // Send a frame over the UART
   for(uint8_t i=0; i<6; i++) {
-    serial.write9bit(uart_frame[i]); 
+    serial->write9bit(uart_frame[i]); 
   } 
 }  
 
@@ -56,7 +56,7 @@ void serial_write_frame(HardwareSerial serial, int16_t value)
 void serial1_to_serial3_test( uint16_t value )
 {
   // Write a frame out of UART1
-  serial_write_frame( Serial1, value );
+  serial_write_frame( &Serial1, value );
 
   delay (10);
 
@@ -74,16 +74,16 @@ void serial1_to_serial3_test( uint16_t value )
 // ---------------------------------------------------------------------------------
 
 inline void motor_right_torque( int16_t value ) {
-  serial_write_frame( Serial1, value );
+  serial_write_frame( &Serial1, value );
 }
 
 inline void motor_left_torque( int16_t value ) {
-  serial_write_frame( Serial2, value );
+  serial_write_frame( &Serial3, value );
 }
 
 inline void motor_both_torque( int16_t value ) {
-  serial_write_frame( Serial1, value );
-  serial_write_frame( Serial2, value );
+  serial_write_frame( &Serial1, value );
+  serial_write_frame( &Serial3, value );
 }
 
 // ---------------------------------------------------------------------------------
@@ -118,13 +118,14 @@ void motor_up_down_test( int max )
   const uint loop_cnt = 250;
   const uint loop_delay = 0;
   for(; i<max; i+=10)
+  //for(; i<max; i+=1 )
   {
     Serial.printf("UART1 Sending: %d\n", i);
     Serial.println( "----------------------------" );
     for(int j=0; j<loop_cnt; j++) {
       delay(loop_delay);
-      motor_right_torque( i );
-      hall_right_print();      
+      motor_both_torque( i );
+      //hall_right_print();      
     }    
   }
 
@@ -134,8 +135,8 @@ void motor_up_down_test( int max )
     Serial.println( "----------------------------" );
     for(int j=0; j<loop_cnt; j++) {
       delay(loop_delay);
-      motor_right_torque( i );
-      hall_right_print(); 
+      motor_both_torque( i );
+      //hall_right_print(); 
     }    
   }
 
@@ -145,8 +146,8 @@ void motor_up_down_test( int max )
     Serial.println( "----------------------------" );
     for(int j=0; j<loop_cnt; j++) {
       delay(loop_delay);
-      motor_right_torque( i );
-      hall_right_print();      
+      motor_both_torque( i );
+      //hall_right_print();      
     }    
   }
 }
@@ -175,34 +176,38 @@ const signed char hall_tbl[8][8] = { NA, NA, NA, NA, NA, NA, NA, NA,
                                      NA, NA, +1, NA, -1, NA, 00, NA,
                                      NA, NA, NA, NA, NA, NA, NA, NA };
 
- // Enum representing hall sensors states
-  // MSB   = hall sensor 1
-  // Midel = hall sensor 2
-  // LSB   = hall sensor 3
-  // At any given time one or two (out of the three) sensors can have a value of 1.
-  // The three hall sensor wires should be connected such that the state tansirions
-  // match the enum order (from HALL_100 down to HALL101) when the wheel is turning CW.
-  enum {
-    HALL_100 = 0b100,
-    HALL_110 = 0b110,
-    HALL_010 = 0b010,
-    HALL_011 = 0b011,
-    HALL_001 = 0b001,
-    HALL_101 = 0b101
-  };                                    
+// Enum representing hall sensors states
+// MSB   = hall sensor 1
+// Midel = hall sensor 2
+// LSB   = hall sensor 3
+// At any given time one or two (out of the three) sensors can have a value of 1.
+// The three hall sensor wires should be connected such that the state tansirions
+// match the enum order (from HALL_100 down to HALL101) when the wheel is turning CW.
+enum {
+  HALL_100 = 0b100,
+  HALL_110 = 0b110,
+  HALL_010 = 0b010,
+  HALL_011 = 0b011,
+  HALL_001 = 0b001,
+  HALL_101 = 0b101
+};                                    
                                
 // ---------------------------------------------------------------------------------
 
 // Return right motor ticks since start-up.
 // This function has to be call frquent enugh to capture all hall sensor transitions.
+// Blue wire -> pin14
+// Green wire -> pin15
+// Yellow wire -> pin16
 //
+static uint hall_right_bad_state_cntr = 0;
+
 int hall_right_ticks()
 {
   static int ticks = 0;
   static uint hall_state = 0;
   static uint hall_state_prev = 0;
-  static uint bad_state_cntr = 0;
-
+  
   int h1 = digitalRead( 14 );
   int h2 = digitalRead( 15 );
   int h3 = digitalRead( 16 );
@@ -213,7 +218,7 @@ int hall_right_ticks()
   // Detect invalid transitions.
   int tick = hall_tbl[hall_state_prev][hall_state];
   if( tick == NA ) {
-    bad_state_cntr++;
+    hall_right_bad_state_cntr++;
     tick = 0;
   }
   ticks += tick;
@@ -224,7 +229,12 @@ int hall_right_ticks()
 
 // Return left motor ticks since start-up.
 // This function has to be call frquent enugh to capture all hall sensor transitions.
+// Blue wire -> pin18
+// Green wire -> pin19
+// Yellow wire -> pin20
 //
+static uint hall_left_bad_state_cntr = 0;
+
 int hall_left_ticks()
 {
   static int ticks = 0;
@@ -232,9 +242,9 @@ int hall_left_ticks()
   static uint hall_state_prev = 0;
   static uint bad_state_cntr = 0;
 
-  int h1 = digitalRead( 17 );
-  int h2 = digitalRead( 18 );
-  int h3 = digitalRead( 19 );
+  int h1 = digitalRead( 18 );
+  int h2 = digitalRead( 19 );
+  int h3 = digitalRead( 20 );
   hall_state_prev = hall_state;
   hall_state = h1 << 2 | h2 << 1 | h3;
 
@@ -242,7 +252,7 @@ int hall_left_ticks()
   // Detect invalid transitions.
   int tick = hall_tbl[hall_state_prev][hall_state];
   if( tick == NA ) {
-    bad_state_cntr++;
+    hall_left_bad_state_cntr++;
     tick = 0;
   }
   ticks += tick;
@@ -284,21 +294,37 @@ byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
 void workout()
 {
   // Wait for motor motion.
-  while( hall_right_ticks() == 0 );
+  //while( hall_right_ticks() == 0 );
 
-  // Aply torqueBased based on distance the cabled is pulled.
+  // Aply torqueBased based on distance the cabled is pulled. 
   while( 1 )
   {
-    int ticks = hall_right_ticks();
-    uint distance = (PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION;
-    if( distance >= sizeof(prf_tbl) ) {
-      distance = sizeof(prf_tbl) - 1;
-    }
-    uint torque = prf_tbl[ distance ];
-    motor_right_torque( -torque );
+    int right_ticks = hall_right_ticks();
+    uint right_distance = (PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION;
+    right_distance = min( right_distance, (sizeof(prf_tbl) - 1) );
+    uint right_torque = prf_tbl[ right_distance ];
+
+    //--------------------------------------------------
+    
+    int left_ticks = hall_left_ticks();
+    uint left_distance = (PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION;
+    left_distance = min( left_distance, (sizeof(prf_tbl) - 1) );
+    uint left_torque = prf_tbl[ left_distance ];
+
+    //--------------------------------------------------
+
+    uint torque = max( right_torque, left_torque );
+    motor_both_torque( -torque );
+    //motor_both_torque( -right_torque );
+    //motor_both_torque( -left_torque );
         
     // Print out ticks, distance and torque.
-    Serial.printf("ticks=%d, distance=%u, torque=%d \n", ticks, distance, torque );
+    Serial.printf("R/L ticks=%d/%d, R/L distance=%u/%u, R/L torque=%d/%d, R/L bad state cntr=%d/%d\n", \
+                   right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
+                   hall_right_bad_state_cntr, hall_right_bad_state_cntr );
+
+    //Serial.printf("left_ticks=%d, left_distance=%u, left_torque=%d, lef_bad_state_cntr=%d \n", \
+    //               left_ticks,    left_distance,    left_torque,    hall_left_bad_state_cntr );
   }
 }
 
@@ -319,9 +345,9 @@ void setup() {
   pinMode(15, INPUT_PULLUP);
   pinMode(16, INPUT_PULLUP);
 
-  pinMode(17, INPUT_PULLUP);
   pinMode(18, INPUT_PULLUP);
   pinMode(19, INPUT_PULLUP);
+  pinMode(20, INPUT_PULLUP);
 
   // initialize the digital pin as an output.
   pinMode(led, OUTPUT);
@@ -336,8 +362,8 @@ void loop()
   //delay(500);               // wait for a second
   //digitalWrite(led, LOW);    // turn the LED off by making the voltage LOW
   //delay(2000);               // wait for a second
-  //motor_up_down_test( 1 );
-  motor_right_torque( 0 );
+  //motor_up_down_test( 250 );
+  motor_both_torque( 0 );
   //hall_right_print();
   workout();
   Serial.println( "----------------------------" );
