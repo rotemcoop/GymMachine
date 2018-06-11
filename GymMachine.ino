@@ -74,16 +74,16 @@ void serial1_to_serial3_test( uint16_t value )
 // ---------------------------------------------------------------------------------
 
 inline void motor_right_torque( int16_t value ) {
-  serial_write_frame( &Serial1, value );
+  serial_write_frame( &Serial3, value );
 }
 
 inline void motor_left_torque( int16_t value ) {
-  serial_write_frame( &Serial3, value );
+  serial_write_frame( &Serial1, value );
 }
 
 inline void motor_both_torque( int16_t value ) {
-  serial_write_frame( &Serial1, value );
   serial_write_frame( &Serial3, value );
+  serial_write_frame( &Serial1, value );
 }
 
 // ---------------------------------------------------------------------------------
@@ -325,10 +325,10 @@ void workout()
 
     //--------------------------------------------------
 
-    uint torque = max( right_torque, left_torque );
-    motor_both_torque( -torque );
-    //motor_both_torque( -right_torque );
-    //motor_both_torque( -left_torque );
+    //uint torque = max( right_torque, left_torque );
+    //motor_both_torque( -torque );
+    motor_right_torque( -right_torque );
+    motor_left_torque( -left_torque );
         
     // Print out ticks, distance and torque.
     Serial.printf("R/L ticks=%d/%d, R/L distance=%u/%u, R/L torque=%d/%d, R/L bad state cntr=%d/%d\n", \
@@ -374,7 +374,7 @@ void loop()
   //delay(500);               // wait for a second
   //digitalWrite(led, LOW);    // turn the LED off by making the voltage LOW
   //delay(2000);               // wait for a second
-  //motor_up_down_test( 250 );
+  // motor_up_down_test( 200 );
   workout_wait_for_start();
   workout();
   Serial.println( "----------------------------" );
