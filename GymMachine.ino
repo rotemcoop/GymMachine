@@ -261,12 +261,60 @@ int hall_left_ticks()
 
 // ---------------------------------------------------------------------------------
 
+/*
+// Return test pins ticks since start-up.
+// This function has to be call frquent enugh to capture all hall sensor transitions.
+// Blue wire -> pin21
+// Green wire -> pin22
+// Yellow wire -> pin23
+//
+static uint hall_test_bad_state_cntr = 0;
+
+int hall_test_ticks()
+{
+  static int ticks = 0;
+  static uint hall_state = 0;
+  static uint hall_state_prev = 0;
+  static uint bad_state_cntr = 0;
+
+  int h1 = digitalRead( 21 );
+  int h2 = digitalRead( 22 );
+  int h3 = digitalRead( 23 );
+  hall_state_prev = hall_state;
+  hall_state = h1 << 2 | h2 << 1 | h3;
+
+  // Map hall sensors transition to rotation ticks (0, +1, -1)
+  // Detect invalid transitions.
+  int tick = hall_tbl[hall_state_prev][hall_state];
+  if( tick == NA ) {
+    hall_test_bad_state_cntr++;
+    tick = 0;
+  }
+  ticks += tick;
+  return ticks;  
+}
+*/
+
+// ---------------------------------------------------------------------------------
+
 void hall_right_print()
 {  
   int h1 = digitalRead(14);
   int h2 = digitalRead(15);
   int h3 = digitalRead(16);
   Serial.printf("Hall values: %d, %d, %d\n", h1, h2, h3);
+}
+
+// ---------------------------------------------------------------------------------
+
+void hall_sensors_test()
+{
+  while( 1 ) {
+    //motor_both_torque( 0 );
+    Serial.printf( "right ticks/bad_ctr=%d/%d, left ticks/bad_ctr=%d/%d\n",\
+                    hall_right_ticks(), hall_right_bad_state_cntr,\
+                    hall_left_ticks(), hall_left_bad_state_cntr);
+  }  
 }
 
 // ---------------------------------------------------------------------------------
@@ -361,6 +409,11 @@ void setup() {
   pinMode(19, INPUT_PULLUP);
   pinMode(20, INPUT_PULLUP);
 
+  // Hall sensor test pins
+  //pinMode(21, INPUT_PULLUP);
+  //pinMode(22, INPUT_PULLUP);
+  //pinMode(23, INPUT_PULLUP);
+
   // initialize the digital pin as an output.
   pinMode(led, OUTPUT);
 }
@@ -371,10 +424,8 @@ void loop()
 {
   // Blink the LED
   digitalWrite(led, HIGH);   // turn the LED on (HIGH is the voltage level)
-  //delay(500);               // wait for a second
-  //digitalWrite(led, LOW);    // turn the LED off by making the voltage LOW
-  //delay(2000);               // wait for a second
   // motor_up_down_test( 200 );
+  //hall_sensors_test();
   workout_wait_for_start();
   workout();
   Serial.println( "----------------------------" );
