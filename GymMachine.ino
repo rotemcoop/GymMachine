@@ -156,10 +156,6 @@ void motor_up_down_test( int max )
 // -------------------------------- Hall Sensors -----------------------------------
 // ---------------------------------------------------------------------------------
 
-// Geometry
-#define TICKS_PER_ROTATION 89
-#define WHEEL_DIAMETER 12.5
-
 // LUT ( hall_tbl[prev_state][state] ) for mapping hall sensors transitions to ticks.
 // +1 -> CW tick
 // -1 -> CCW tick
@@ -354,32 +350,46 @@ void workout_wait_for_start()
 
 // ---------------------------------------------------------------------------------
 
+// Geometry
+#define TICKS_PER_ROTATION 89.0
+#define WHEEL_DIAMETER 12.5
+
 void workout()
 {
   // Aply torqueBased based on distance the cabled is pulled. 
+  int right_distance_prev = 0;
+  int left_distance_prev = 0;
   while( 1 )
   {
     int right_ticks = hall_right_ticks();
-    uint right_distance = (PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION;
-    right_distance = min( right_distance, (sizeof(prf_tbl) - 1) );
-    uint right_torque = prf_tbl[ right_distance ];
+    int right_distance = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
+    right_distance = min( right_distance, (int)((sizeof(prf_tbl) - 1)) );
+    right_distance = max( right_distance, 0 );
+    int right_speed = right_distance - right_distance;
+    int right_torque = prf_tbl[ right_distance ];
+    right_distance_prev = right_distance;
 
     //--------------------------------------------------
     
     int left_ticks = hall_left_ticks();
-    uint left_distance = (PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION;
-    left_distance = min( left_distance, (sizeof(prf_tbl) - 1) );
-    uint left_torque = prf_tbl[ left_distance ];
-
+    int left_distance = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
+    left_distance = min( left_distance, (int)((sizeof(prf_tbl) - 1)) );
+    left_distance = max( left_distance, 0 );
+    int left_speed = left_distance - left_distance;
+    int left_torque = prf_tbl[ left_distance ];
+    left_distance_prev = left_distance;
+    
     //--------------------------------------------------
 
     //uint torque = max( right_torque, left_torque );
     //motor_both_torque( -torque );
+    //right_torque *= 3;
+    //left_torque *= 3;
     motor_right_torque( -right_torque );
     motor_left_torque( -left_torque );
         
     // Print out ticks, distance and torque.
-    Serial.printf("R/L ticks=%d/%d, R/L distance=%u/%u, R/L torque=%d/%d, R/L bad state cntr=%d/%d\n", \
+    Serial.printf("R/L ticks=%d/%d, R/L distance=%d/%d, R/L torque=%d/%d, R/L bad state cntr=%d/%d\n", \
                    right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
                    hall_right_bad_state_cntr, hall_right_bad_state_cntr );
 
