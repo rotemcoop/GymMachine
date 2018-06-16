@@ -88,9 +88,9 @@ inline void motor_both_torque( int16_t value ) {
 
 // ---------------------------------------------------------------------------------
 
-void motor_wind_back()
+void motor_wind_back( int torque )
 {
-  const uint torque = -100;
+  //const uint torque = -torque;
   int right_ticks;
   int left_ticks;
 
@@ -98,14 +98,15 @@ void motor_wind_back()
   do {
     right_ticks = hall_right_ticks();
     left_ticks = hall_left_ticks();
-    
-    for(int i=0; i>1000; i++) {
-      motor_both_torque( torque );
+    Serial.printf("Windback torque=%d\n", -torque);
+    for(int i=0; i<100; i++) {
+      motor_both_torque( -torque );
       hall_right_ticks();
       hall_left_ticks();
     }
-  } while (right_ticks != hall_right_ticks() ||
-           left_ticks != hall_left_ticks());
+  } while( right_ticks > hall_right_ticks() );
+  //&& left_ticks > hall_left_ticks());
+  motor_both_torque( 0 );
 }
 
 //-------------------------------------------------------------------------
@@ -187,8 +188,17 @@ enum {
   HALL_001 = 0b001,
   HALL_101 = 0b101
 };                                    
-                               
+
+//
 // ---------------------------------------------------------------------------------
+
+
+static uint hall_right_bad_state_cntr = 0;
+static int hall_right_ticks_cntr = 0;
+
+void hall_right_ticks_reset() {
+  hall_right_ticks_cntr = 0;
+}
 
 // Return right motor ticks since start-up.
 // This function has to be call frquent enugh to capture all hall sensor transitions.
@@ -196,11 +206,8 @@ enum {
 // Green wire -> pin15
 // Yellow wire -> pin16
 //
-static uint hall_right_bad_state_cntr = 0;
-
 int hall_right_ticks()
 {
-  static int ticks = 0;
   static uint hall_state = 0;
   static uint hall_state_prev = 0;
   
@@ -217,8 +224,8 @@ int hall_right_ticks()
     hall_right_bad_state_cntr++;
     tick = 0;
   }
-  ticks += tick;
-  return ticks;  
+  hall_right_ticks_cntr += tick;
+  return hall_right_ticks_cntr;  
 }
 
 // ---------------------------------------------------------------------------------
@@ -230,10 +237,14 @@ int hall_right_ticks()
 // Yellow wire -> pin20
 //
 static uint hall_left_bad_state_cntr = 0;
+static int hall_left_ticks_cntr = 0;
+
+void hall_left_ticks_reset() {
+  hall_left_ticks_cntr = 0;
+}
 
 int hall_left_ticks()
 {
-  static int ticks = 0;
   static uint hall_state = 0;
   static uint hall_state_prev = 0;
   static uint bad_state_cntr = 0;
@@ -251,8 +262,8 @@ int hall_left_ticks()
     hall_left_bad_state_cntr++;
     tick = 0;
   }
-  ticks += tick;
-  return ticks;  
+  hall_left_ticks_cntr += tick;
+  return hall_left_ticks_cntr;  
 }
 
 // ---------------------------------------------------------------------------------
@@ -353,32 +364,59 @@ void workout_wait_for_start()
 // Geometry
 #define TICKS_PER_ROTATION 89.0
 #define WHEEL_DIAMETER 12.5
+#define DIRECTION_COMP_MAX 150
 
 void workout()
 {
   // Aply torqueBased based on distance the cabled is pulled. 
   int right_distance_prev = 0;
   int left_distance_prev = 0;
+  int right_speed = 0;
+  int left_speed = 0;
+  int right_comp = 0;
+  int left_comp = 0;
+  
   while( 1 )
   {
     int right_ticks = hall_right_ticks();
-    int right_distance = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
-    right_distance = min( right_distance, (int)((sizeof(prf_tbl) - 1)) );
+    int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
+    if( right_distance_raw != right_distance_prev ) {
+      right_speed = right_distance_raw - right_distance_prev;
+      right_distance_prev = right_distance_raw;
+    } 
+          
+    int right_distance = min( right_distance_raw, (int)((sizeof(prf_tbl) - 1)) );
     right_distance = max( right_distance, 0 );
-    int right_speed = right_distance - right_distance;
     int right_torque = prf_tbl[ right_distance ];
-    right_distance_prev = right_distance;
 
+    if( right_speed <= 0 ) {
+      right_comp = min(right_comp+1, DIRECTION_COMP_MAX);  
+    }
+    else {
+      right_comp = max(right_comp-1, 0); 
+    }
+    right_torque += right_comp;
+    //if( right_speed <= 0 ) {
+    //  right_torque += 100;
+    //}
+        
     //--------------------------------------------------
     
     int left_ticks = hall_left_ticks();
-    int left_distance = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
-    left_distance = min( left_distance, (int)((sizeof(prf_tbl) - 1)) );
+    int left_distance_raw = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
+
+    if( left_distance_raw != left_distance_prev ) {
+      left_speed = left_distance_raw - left_distance_prev;
+      left_distance_prev = left_distance_raw;
+    } 
+    int left_distance = min( left_distance_raw, (int)((sizeof(prf_tbl) - 1)) );
     left_distance = max( left_distance, 0 );
-    int left_speed = left_distance - left_distance;
     int left_torque = prf_tbl[ left_distance ];
-    left_distance_prev = left_distance;
-    
+
+    if( left_speed < 0 ) {
+      left_torque += 100;
+    }
+        
     //--------------------------------------------------
 
     //uint torque = max( right_torque, left_torque );
@@ -389,9 +427,9 @@ void workout()
     motor_left_torque( -left_torque );
         
     // Print out ticks, distance and torque.
-    Serial.printf("R/L ticks=%d/%d, R/L distance=%d/%d, R/L torque=%d/%d, R/L bad state cntr=%d/%d\n", \
+    Serial.printf("R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, comp=%d/%d\n", \
                    right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
-                   hall_right_bad_state_cntr, hall_right_bad_state_cntr );
+                   right_speed, left_speed, right_comp, left_comp );
 
     //Serial.printf("left_ticks=%d, left_distance=%u, left_torque=%d, lef_bad_state_cntr=%d \n", \
     //               left_ticks,    left_distance,    left_torque,    hall_left_bad_state_cntr );
@@ -437,9 +475,15 @@ void loop()
   // motor_up_down_test( 200 );
   //hall_sensors_test();
   workout_wait_for_start();
+  motor_wind_back( 100 );
+  hall_right_ticks_reset();
+  hall_left_ticks_reset();
   workout();
   Serial.println( "----------------------------" );
-
+  //while (1) {
+  // Serial.print("Finished wind back\n");
+  // motor_both_torque( -80 );
+  //}
   //int incomingByte;
     //while (Serial1.available() > 0) {
     //incomingByte = Serial1.read();
