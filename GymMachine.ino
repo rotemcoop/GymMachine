@@ -347,7 +347,7 @@ void hall_sensors_test()
 
 // Workout profile table.
 // Specifies 8 bits resistance value for each cable pull distance in cm.
-byte prf_tbl[] =    {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
+byte spring_prf[] = {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                        10,  11,  12,  13,  14,  15,  16,  17,  18,  19,
                        20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
                        30,  31,  32,  33,  34,  35,  36,  37,  38,  38,
@@ -383,7 +383,7 @@ void workout_wait_for_start()
 #define WHEEL_DIAMETER 12.5
 #define DIRECTION_COMP 50
 
-void workout()
+void workout( byte prf_tbl[], int prf_tbl_len )
 {
   // Aply torqueBased based on distance the cabled is pulled. 
   int right_distance_prev = 0;
@@ -396,7 +396,7 @@ void workout()
   {
     int right_ticks = hall_right_ticks();
     int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
-    int right_distance = min( right_distance_raw, (int)((sizeof(prf_tbl) - 1)) );
+    int right_distance = min( right_distance_raw, (prf_tbl_len - 1) );
     right_distance = max( right_distance, 0 );
     int right_torque = prf_tbl[ right_distance ];
     
@@ -419,7 +419,7 @@ void workout()
       left_speed = left_distance_raw - left_distance_prev;
       left_distance_prev = left_distance_raw;
     } 
-    int left_distance = min( left_distance_raw, (int)((sizeof(prf_tbl) - 1)) );
+    int left_distance = min( left_distance_raw, (prf_tbl_len - 1) );
     left_distance = max( left_distance, 0 );
     int left_torque = prf_tbl[ left_distance ];
     if( left_speed < 0 ) left_torque += DIRECTION_COMP;
@@ -483,7 +483,7 @@ void loop()
   motor_wind_back( 100 );
   hall_right_ticks_reset();
   hall_left_ticks_reset();
-  workout();
+  workout( spring_prf, sizeof(spring_prf) );
   Serial.println( "----------------------------" );
   //while (1) {
   // Serial.print("Finished wind back\n");
