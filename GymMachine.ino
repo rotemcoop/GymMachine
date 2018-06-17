@@ -222,14 +222,17 @@ enum {
   HALL_101 = 0b101
 };                                    
 
-//
 // ---------------------------------------------------------------------------------
-
 
 static uint hall_right_bad_state_cntr = 0;
 static int hall_right_ticks_cntr = 0;
+static int hall_right_ticks_per_sec_cntr = 0;
 
-void hall_right_ticks_reset() {
+inline unsigned long hall_right_ticks_per_sec() {
+  return hall_right_ticks_per_sec_cntr;
+}
+
+inline void hall_right_ticks_reset() {
   hall_right_ticks_cntr = 0;
 }
 
@@ -258,6 +261,23 @@ int hall_right_ticks()
     tick = 0;
   }
   hall_right_ticks_cntr += tick;
+
+  //--------------------------------------------------------------------------------
+
+  // Calculate ticks per second
+  #define INTERVAL 100 // in millisec
+  static int ticks_prev = hall_right_ticks_cntr;
+  static unsigned long time_prev = millis();
+
+  unsigned long time_curr = millis();
+  if( time_curr >= time_prev + INTERVAL ) {
+    hall_right_ticks_per_sec_cntr = (hall_right_ticks_cntr - ticks_prev) * (1000/INTERVAL);
+    ticks_prev = hall_right_ticks_cntr;
+    time_prev = time_curr;
+  }
+
+  //--------------------------------------------------------------------------------
+  
   return hall_right_ticks_cntr;  
 }
 
@@ -298,42 +318,6 @@ int hall_left_ticks()
   hall_left_ticks_cntr += tick;
   return hall_left_ticks_cntr;  
 }
-
-// ---------------------------------------------------------------------------------
-
-/*
-// Return test pins ticks since start-up.
-// This function has to be call frquent enugh to capture all hall sensor transitions.
-// Blue wire -> pin21
-// Green wire -> pin22
-// Yellow wire -> pin23
-//
-static uint hall_test_bad_state_cntr = 0;
-
-int hall_test_ticks()
-{
-  static int ticks = 0;
-  static uint hall_state = 0;
-  static uint hall_state_prev = 0;
-  static uint bad_state_cntr = 0;
-
-  int h1 = digitalRead( 21 );
-  int h2 = digitalRead( 22 );
-  int h3 = digitalRead( 23 );
-  hall_state_prev = hall_state;
-  hall_state = h1 << 2 | h2 << 1 | h3;
-
-  // Map hall sensors transition to rotation ticks (0, +1, -1)
-  // Detect invalid transitions.
-  int tick = hall_tbl[hall_state_prev][hall_state];
-  if( tick == NA ) {
-    hall_test_bad_state_cntr++;
-    tick = 0;
-  }
-  ticks += tick;
-  return ticks;  
-}
-*/
 
 // ---------------------------------------------------------------------------------
 
@@ -412,15 +396,22 @@ void workout()
   {
     int right_ticks = hall_right_ticks();
     int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
+    
+    right_speed = hall_right_ticks_per_sec();
+    /*
     if( right_distance_raw != right_distance_prev ) {
       right_speed = right_distance_raw - right_distance_prev;
       right_distance_prev = right_distance_raw;
     } 
+    */
           
     int right_distance = min( right_distance_raw, (int)((sizeof(prf_tbl) - 1)) );
     right_distance = max( right_distance, 0 );
     int right_torque = prf_tbl[ right_distance ];
-    if( right_speed <= 0 ) right_torque += DIRECTION_COMP_MAX;
+    
+    //if( right_speed < 0 ) right_torque += DIRECTION_COMP_MAX;
+    right_torque -= right_speed*2;
+    right_torque = max( right_torque, 0 );
         
     //--------------------------------------------------
     
@@ -443,9 +434,9 @@ void workout()
     motor_left_torque_smooth( -left_torque );
         
     // Print out ticks, distance and torque.
-    Serial.printf("R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d\n", \
+    Serial.printf("R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, ticks_per_sec=%d\n", \
                    right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
-                   right_speed, left_speed );
+                   right_speed, left_speed, hall_right_ticks_per_sec() );
 
     //Serial.printf("left_ticks=%d, left_distance=%u, left_torque=%d, lef_bad_state_cntr=%d \n", \
     //               left_ticks,    left_distance,    left_torque,    hall_left_bad_state_cntr );
