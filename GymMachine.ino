@@ -381,7 +381,7 @@ void workout_wait_for_start()
 // Geometry
 #define TICKS_PER_ROTATION 89.0
 #define WHEEL_DIAMETER 12.5
-#define DIRECTION_COMP_MAX 150
+#define DIRECTION_COMP 50
 
 void workout()
 {
@@ -396,21 +396,19 @@ void workout()
   {
     int right_ticks = hall_right_ticks();
     int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
-    
-    right_speed = hall_right_ticks_per_sec();
-    /*
-    if( right_distance_raw != right_distance_prev ) {
-      right_speed = right_distance_raw - right_distance_prev;
-      right_distance_prev = right_distance_raw;
-    } 
-    */
-          
     int right_distance = min( right_distance_raw, (int)((sizeof(prf_tbl) - 1)) );
     right_distance = max( right_distance, 0 );
     int right_torque = prf_tbl[ right_distance ];
     
-    //if( right_speed < 0 ) right_torque += DIRECTION_COMP_MAX;
-    right_torque -= right_speed*2;
+    right_speed = hall_right_ticks_per_sec();
+    if( right_speed > 0 ) {
+      right_torque *= 2;
+      right_torque -= right_speed*3;
+    }
+    else if( right_speed < 0 ) {
+      right_torque -= (right_speed*3)/2;
+      right_torque += DIRECTION_COMP;
+    }
     right_torque = max( right_torque, 0 );
         
     //--------------------------------------------------
@@ -424,7 +422,7 @@ void workout()
     int left_distance = min( left_distance_raw, (int)((sizeof(prf_tbl) - 1)) );
     left_distance = max( left_distance, 0 );
     int left_torque = prf_tbl[ left_distance ];
-    if( left_speed < 0 ) left_torque += DIRECTION_COMP_MAX;
+    if( left_speed < 0 ) left_torque += DIRECTION_COMP;
         
     //--------------------------------------------------
 
