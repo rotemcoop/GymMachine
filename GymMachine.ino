@@ -137,8 +137,8 @@ void motor_wind_back( int torque )
       hall_right_ticks();
       hall_left_ticks();
     }
-  } while( right_ticks > hall_right_ticks() );
-  //&& left_ticks > hall_left_ticks());
+  } while( right_ticks > hall_right_ticks() ||
+           left_ticks > hall_left_ticks() );
   motor_both_torque( 0 );
 }
 
@@ -347,6 +347,7 @@ void hall_sensors_test()
 
 // Workout profile table.
 // Specifies 8 bits resistance value for each cable pull distance in cm.
+
 byte spring_prf[] = {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                        10,  11,  12,  13,  14,  15,  16,  17,  18,  19,
                        20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
@@ -362,6 +363,12 @@ byte spring_prf[] = {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                       120, 121, 122, 123, 124, 125, 126, 127, 128, 129,
                       130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
+
+// ---------------------------------------------------------------------------------
+
+#define WGT 150
+byte weight_prf[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+                      WGT, WGT, WGT, WGT, WGT, WGT, WGT, WGT, WGT, WGT };
 
 // ---------------------------------------------------------------------------------
 
@@ -381,7 +388,7 @@ void workout_wait_for_start()
 // Geometry
 #define TICKS_PER_ROTATION 89.0
 #define WHEEL_DIAMETER 12.5
-#define DIRECTION_COMP 50
+#define DIRECTION_COMP 100
 
 void workout( byte prf_tbl[], int prf_tbl_len )
 {
@@ -402,13 +409,18 @@ void workout( byte prf_tbl[], int prf_tbl_len )
     
     right_speed = hall_right_ticks_per_sec();
     if( right_speed > 0 ) {
-      right_torque *= 2;
-      right_torque -= right_speed*3;
+      //right_torque *= 2;
+      //right_torque -= right_speed*3;
     }
     else if( right_speed < 0 ) {
-      right_torque -= (right_speed*3)/2;
+      //right_torque -= (right_speed*3)/2;
       right_torque += DIRECTION_COMP;
     }
+
+    if( right_distance <= 0 ) {
+      right_torque = 0;
+    }
+    
     right_torque = max( right_torque, 0 );
         
     //--------------------------------------------------
@@ -480,10 +492,11 @@ void loop()
   // motor_up_down_test( 200 );
   //hall_sensors_test();
   workout_wait_for_start();
-  motor_wind_back( 100 );
+  motor_wind_back( 150 );
   hall_right_ticks_reset();
   hall_left_ticks_reset();
-  workout( spring_prf, sizeof(spring_prf) );
+  //workout( spring_prf, sizeof(spring_prf) );
+  workout( weight_prf, sizeof(weight_prf) );
   Serial.println( "----------------------------" );
   //while (1) {
   // Serial.print("Finished wind back\n");
