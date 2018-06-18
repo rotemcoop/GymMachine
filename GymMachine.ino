@@ -468,19 +468,7 @@ void workout( byte prf_tbl[], int prf_tbl_len )
     }
     
     left_torque = max( left_torque, 0 );
-    /*
-    int left_ticks = hall_left_ticks();
-    int left_distance_raw = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
-    if( left_distance_raw != left_distance_prev ) {
-      left_speed = left_distance_raw - left_distance_prev;
-      left_distance_prev = left_distance_raw;
-    } 
-    int left_distance = min( left_distance_raw, (prf_tbl_len - 1) );
-    left_distance = max( left_distance, 0 );
-    int left_torque = prf_tbl[ left_distance ];
     
-    if( left_speed < 0 ) left_torque += DIRECTION_COMP;
-    */    
     //--------------------------------------------------
 
     //right_torque *= 3;
