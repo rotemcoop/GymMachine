@@ -388,9 +388,19 @@ byte spring_prf[] = {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
 
 // ---------------------------------------------------------------------------------
 
-#define WGT 150
+#define W1 150
+#define W2 150
+#define W3 150
+#define W4 150
 byte weight_prf[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-                      WGT, WGT, WGT, WGT, WGT, WGT, WGT, WGT, WGT, WGT };
+                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
+                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
+                       W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,
+                       W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,
+                       W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,
+                       W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,
+                       W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,
+                       W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4 };
 
 // ---------------------------------------------------------------------------------
 
@@ -427,15 +437,15 @@ void workout( byte prf_tbl[], int prf_tbl_len )
     int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
     int right_distance = min( right_distance_raw, (prf_tbl_len - 1) );
     right_distance = max( right_distance, 0 );
-    int right_torque = prf_tbl[ right_distance ];
+    int right_torque = prf_tbl[ right_distance ] * 2;
     
     right_speed = hall_right_ticks_per_sec();
     if( right_speed > 0 ) {
       //right_torque *= 2;
-      //right_torque -= right_speed*3;
+      right_torque -= right_speed*2;
     }
     else if( right_speed < 0 ) {
-      //right_torque -= (right_speed*3)/2;
+      //right_torque -= right_speed;
       right_torque += DIRECTION_COMP;
     }
 
@@ -456,10 +466,10 @@ void workout( byte prf_tbl[], int prf_tbl_len )
     left_speed = hall_left_ticks_per_sec();
     if( left_speed > 0 ) {
       //left_torque *= 2;
-      //left_torque -= left_speed*3;
+      left_torque -= left_speed*2;
     }
     else if( left_speed < 0 ) {
-      //left_torque -= (left_speed*3)/2;
+      left_torque -= left_speed;
       left_torque += DIRECTION_COMP;
     }
 
