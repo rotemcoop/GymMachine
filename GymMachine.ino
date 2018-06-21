@@ -13,6 +13,11 @@ typedef enum {
   HALL_LEFT
 } hall_t;
 
+typedef enum {
+  CMD_PRF_CHANGE,
+  CMD_STOP
+} cmd_t;
+
 // ---------------------------------------------------------------------------------
 // --------------------------------- Golbal Data -----------------------------------
 // ---------------------------------------------------------------------------------
@@ -421,6 +426,8 @@ byte weight_prf[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 #define WHEEL_DIAMETER 12.5
 #define DIRECTION_COMP 100
 
+byte* workout_prf = weight_prf;
+
 void workout( byte prf_tbl[], int prf_tbl_len )
 {
   // Aply torqueBased based on distance the cabled is pulled. 
@@ -519,19 +526,47 @@ void cmd_wait_for_start()
 
 // ---------------------------------------------------------------------------------
 
+//cmd_t cmd = CMD_PRF_CHANGE;
+
 bool cmd_continue()
 {
-  if ( !Serial.available()) {
-    return true;
+  if( Serial.available() ) {
+    if( Serial.peek() == '\n' ) {
+      Serial.read();
+      return true;
+    }
+    return false;
   }
-  
-  int in_byte = Serial.read();
-  while( 1 ) {
-    Serial.printf( "Received %c\n", in_byte );
-    cmd_service_motor();   
-  }
-  
   return true;  
+}
+
+// ---------------------------------------------------------------------------------
+
+void cmd_main()
+{
+  while(1)
+  {
+    motor_wind_back( 150 );
+    hall_reset();
+    int input = Serial.read();
+    switch (input)
+    {
+      case '\n':
+        break;
+      
+      case 'w':
+        workout( weight_prf, sizeof(weight_prf) );
+        break;
+
+      case 's':
+        workout( spring_prf, sizeof(spring_prf) );
+        break;
+        
+      default:
+        workout( weight_prf, sizeof(weight_prf) );
+        break;
+    }
+  }
 }
 
 
@@ -574,13 +609,14 @@ void loop()
   hall_reset();
   //hall_right_ticks_reset();
   //hall_left_ticks_reset();
-  //workout( spring_prf, sizeof(spring_prf) );
-  workout( weight_prf, sizeof(weight_prf) );
+  workout( spring_prf, sizeof(spring_prf) );
+  //workout( weight_prf, sizeof(weight_prf) );
+  cmd_main();
   Serial.println( "----------------------------" );
-  //while (1) {
-  // Serial.print("Finished wind back\n");
-  // motor_both_torque( 80 );
-  //}
+
+
+
+  
   //int incomingByte;
     //while (Serial1.available() > 0) {
     //incomingByte = Serial1.read();
