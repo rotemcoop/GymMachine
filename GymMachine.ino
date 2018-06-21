@@ -390,10 +390,26 @@ void hall_sensors_test()
 // ---------------------------------- Workout --------------------------------------
 // ---------------------------------------------------------------------------------
 
-
-
-// Workout profile table.
+// Workout profiles.
 // Specifies 8 bits resistance value for each cable pull distance in cm.
+
+#define W1 50
+#define W2 50
+#define W3 50
+#define W4 50
+byte weight_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
+                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
+                       W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,
+                       W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,
+                       W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,
+                       W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,
+                       W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,
+                       W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4 };
+
+work_prf_t weight_prf = { "Weight", sizeof(weight_tbl), weight_tbl };
+
+// ---------------------------------------------------------------------------------
 
 byte spring_tbl[] = {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                        10,  11,  12,  13,  14,  15,  16,  17,  18,  19,
@@ -415,21 +431,18 @@ work_prf_t spring_prf = { "Spring", sizeof(spring_tbl), spring_tbl };
 
 // ---------------------------------------------------------------------------------
 
-#define W1 50
-#define W2 50
-#define W3 50
-#define W4 50
-byte weight_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
-                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
-                       W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,
-                       W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,
-                       W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,
-                       W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,
-                       W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,
-                       W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4 };
-
-work_prf_t weight_prf = { "Weight", sizeof(weight_tbl), weight_tbl };
+#define M1 50
+byte mtn_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+                    50,  52,  54,  56,  58,  60,  62,  64,  66,  68,
+                    70,  72,  74,  76,  78,  80,  82,  84,  86,  88,
+                    90,  92,  94,  96,  98, 100, 102, 104, 106, 108,
+                   110, 112, 114, 116, 118, 120, 122, 124, 126, 128,
+                   128, 126, 124, 122, 120, 118, 116, 114, 112, 110,
+                   108, 106, 104, 102, 100,  98,  96,  94,  92,  90,
+                    88,  86,  84,  82,  80,  78,  76,  74,  72,  70,
+                    68,  66,  64,  62,  60,  58,  56,  54,  52,  50 };
+       
+work_prf_t mtn_prf = { "Mountain", sizeof(mtn_tbl), mtn_tbl };
 
 // ---------------------------------------------------------------------------------
 
@@ -575,15 +588,17 @@ void cmd_main()
         break;
       
       case 'w':
-        Serial.printf("received w\n");
         workout( &weight_prf );
         break;
 
       case 's':
-        Serial.printf("received s\n");
         workout( &spring_prf );
         break;
         
+      case 'm':
+        workout( &mtn_prf );
+        break;
+      
       default:
         Serial.printf("received invalid input\n");
         workout( &weight_prf );
