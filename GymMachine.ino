@@ -454,11 +454,8 @@ work_prf_t mtn_prf = { "Mountain", sizeof(mtn_tbl), mtn_tbl };
 void workout( work_prf_t* prf )
 {
   // Aply torqueBased based on distance the cabled is pulled. 
-  int right_distance_prev = 0;
-  int left_distance_prev = 0;
   int right_speed = 0;
   int left_speed = 0;
-  //int left_comp = 0;
   
   while( cmd_continue() )
   {
