@@ -18,6 +18,12 @@ typedef enum {
   CMD_STOP
 } cmd_t;
 
+typedef struct {
+  char* name;
+  uint len;
+  byte* tbl;
+} work_prf_t;
+
 // ---------------------------------------------------------------------------------
 // --------------------------------- Golbal Data -----------------------------------
 // ---------------------------------------------------------------------------------
@@ -137,7 +143,7 @@ void motor_wind_back( int torque )
     left_ticks = hall_left_ticks();
     Serial.printf("Windback torque=%d\n", torque);
     for(int i=0; i<100; i++) {
-      motor_both_torque( torque );
+      motor_both_torque_smooth( torque );
       hall_right_ticks();
       hall_left_ticks();
     }
@@ -384,10 +390,12 @@ void hall_sensors_test()
 // ---------------------------------- Workout --------------------------------------
 // ---------------------------------------------------------------------------------
 
+
+
 // Workout profile table.
 // Specifies 8 bits resistance value for each cable pull distance in cm.
 
-byte spring_prf[] = {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
+byte spring_tbl[] = {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                        10,  11,  12,  13,  14,  15,  16,  17,  18,  19,
                        20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
                        30,  31,  32,  33,  34,  35,  36,  37,  38,  38,
@@ -403,13 +411,15 @@ byte spring_prf[] = {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                       130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
+work_prf_t spring_prf = { "Spring", sizeof(spring_tbl), spring_tbl };
+
 // ---------------------------------------------------------------------------------
 
-#define W1 150
-#define W2 150
-#define W3 150
-#define W4 150
-byte weight_prf[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+#define W1 50
+#define W2 50
+#define W3 50
+#define W4 50
+byte weight_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
                        W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,
@@ -419,6 +429,8 @@ byte weight_prf[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                        W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,
                        W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4 };
 
+work_prf_t weight_prf = { "Weight", sizeof(weight_tbl), weight_tbl };
+
 // ---------------------------------------------------------------------------------
 
 // Geometry
@@ -426,9 +438,7 @@ byte weight_prf[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 #define WHEEL_DIAMETER 12.5
 #define DIRECTION_COMP 100
 
-byte* workout_prf = weight_prf;
-
-void workout( byte prf_tbl[], int prf_tbl_len )
+void workout( work_prf_t* prf )
 {
   // Aply torqueBased based on distance the cabled is pulled. 
   int right_distance_prev = 0;
@@ -441,9 +451,9 @@ void workout( byte prf_tbl[], int prf_tbl_len )
   {
     int right_ticks = hall_right_ticks();
     int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
-    int right_distance = min( right_distance_raw, (prf_tbl_len - 1) );
+    int right_distance = min( right_distance_raw, (prf->len - 1) );
     right_distance = max( right_distance, 0 );
-    int right_torque = prf_tbl[ right_distance ] * 2;
+    int right_torque = prf->tbl[ right_distance ] * 4;
     
     right_speed = hall_right_ticks_per_sec();
     if( right_speed > 0 ) {
@@ -465,9 +475,9 @@ void workout( byte prf_tbl[], int prf_tbl_len )
 
     int left_ticks = hall_left_ticks();
     int left_distance_raw = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
-    int left_distance = min( left_distance_raw, (prf_tbl_len - 1) );
+    int left_distance = min( left_distance_raw, (prf->len - 1) );
     left_distance = max( left_distance, 0 );
-    int left_torque = prf_tbl[ left_distance ];
+    int left_torque = prf->tbl[ left_distance ] * 4;
     
     left_speed = hall_left_ticks_per_sec();
     if( left_speed > 0 ) {
@@ -475,7 +485,7 @@ void workout( byte prf_tbl[], int prf_tbl_len )
       left_torque -= left_speed*2;
     }
     else if( left_speed < 0 ) {
-      left_torque -= left_speed;
+      //left_torque -= left_speed;
       left_torque += DIRECTION_COMP;
     }
 
@@ -484,17 +494,15 @@ void workout( byte prf_tbl[], int prf_tbl_len )
     }
     
     left_torque = max( left_torque, 0 );
-    
+
     //--------------------------------------------------
 
-    //right_torque *= 3;
-    //left_torque *= 3;
     motor_right_torque_smooth( right_torque );
     motor_left_torque_smooth( left_torque );
         
     // Print out ticks, distance and torque.
-    Serial.printf("R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, ticks_per_sec=%d\n", \
-                   right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
+    Serial.printf("Prf=%s, R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, ticks_per_sec=%d\n", \
+                   prf->name, right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
                    right_speed, left_speed, hall_right_ticks_per_sec() );
 
     //Serial.printf("left_ticks=%d, left_distance=%u, left_torque=%d, lef_bad_state_cntr=%d \n", \
@@ -531,13 +539,23 @@ void cmd_wait_for_start()
 bool cmd_continue()
 {
   if( Serial.available() ) {
-    if( Serial.peek() == '\n' ) {
+    if( Serial.peek() == '\n' || Serial.peek() == '\r') {
       Serial.read();
       return true;
     }
     return false;
   }
   return true;  
+}
+
+// ---------------------------------------------------------------------------------
+
+void cmd_print( char cmd )
+{
+  for( int i=0; i<1000; i++ ) {
+    cmd_service_motor();
+    Serial.printf("received %c\n", cmd );  
+  }
 }
 
 // ---------------------------------------------------------------------------------
@@ -549,21 +567,26 @@ void cmd_main()
     motor_wind_back( 150 );
     hall_reset();
     int input = Serial.read();
+    //cmd_print( input );
     switch (input)
     {
       case '\n':
+      case '\r':
         break;
       
       case 'w':
-        workout( weight_prf, sizeof(weight_prf) );
+        Serial.printf("received w\n");
+        workout( &weight_prf );
         break;
 
       case 's':
-        workout( spring_prf, sizeof(spring_prf) );
+        Serial.printf("received s\n");
+        workout( &spring_prf );
         break;
         
       default:
-        workout( weight_prf, sizeof(weight_prf) );
+        Serial.printf("received invalid input\n");
+        workout( &weight_prf );
         break;
     }
   }
@@ -609,8 +632,8 @@ void loop()
   hall_reset();
   //hall_right_ticks_reset();
   //hall_left_ticks_reset();
-  workout( spring_prf, sizeof(spring_prf) );
-  //workout( weight_prf, sizeof(weight_prf) );
+  //workout( spring_prf, sizeof(spring_prf) );
+  workout( &weight_prf );
   cmd_main();
   Serial.println( "----------------------------" );
 
