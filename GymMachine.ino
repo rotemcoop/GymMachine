@@ -74,16 +74,16 @@ void serial1_to_serial3_test( uint16_t value )
 // ---------------------------------------------------------------------------------
 
 inline void motor_right_torque( int16_t value ) {
-  serial_write_frame( &Serial3, value );
+  serial_write_frame( &Serial3, -value );
 }
 
 inline void motor_left_torque( int16_t value ) {
-  serial_write_frame( &Serial1, value );
+  serial_write_frame( &Serial1, -value );
 }
 
 inline void motor_both_torque( int16_t value ) {
-  serial_write_frame( &Serial3, value );
-  serial_write_frame( &Serial1, value );
+  serial_write_frame( &Serial3, -value );
+  serial_write_frame( &Serial1, -value );
 }
 
 // ---------------------------------------------------------------------------------
@@ -123,7 +123,6 @@ void motor_both_torque_smooth( int16_t value ) {
 
 void motor_wind_back( int torque )
 {
-  //const uint torque = -torque;
   int right_ticks;
   int left_ticks;
 
@@ -131,9 +130,9 @@ void motor_wind_back( int torque )
   do {
     right_ticks = hall_right_ticks();
     left_ticks = hall_left_ticks();
-    Serial.printf("Windback torque=%d\n", -torque);
+    Serial.printf("Windback torque=%d\n", torque);
     for(int i=0; i<100; i++) {
-      motor_both_torque( -torque );
+      motor_both_torque( torque );
       hall_right_ticks();
       hall_left_ticks();
     }
@@ -225,16 +224,41 @@ enum {
 // ---------------------------------------------------------------------------------
 
 static uint hall_right_bad_state_cntr = 0;
+static uint hall_left_bad_state_cntr = 0;
 static int hall_right_ticks_cntr = 0;
+static int hall_left_ticks_cntr = 0;
 static int hall_right_ticks_per_sec_cntr = 0;
+static int hall_left_ticks_per_sec_cntr = 0;
+
+void hall_reset() {
+  hall_right_bad_state_cntr = 0;
+  hall_left_bad_state_cntr = 0;
+  hall_right_ticks_cntr = 0;
+  hall_left_ticks_cntr = 0;
+  hall_right_ticks_per_sec_cntr = 0;
+  hall_left_ticks_per_sec_cntr = 0;
+}
+
+/*
+inline void hall_right_ticks_reset() {
+  hall_right_ticks_cntr = 0;
+}
+
+inline void hall_left_ticks_reset() {
+  hall_left_ticks_cntr = 0;
+}
+*/
 
 inline unsigned long hall_right_ticks_per_sec() {
   return hall_right_ticks_per_sec_cntr;
 }
 
-inline void hall_right_ticks_reset() {
-  hall_right_ticks_cntr = 0;
+inline unsigned long hall_left_ticks_per_sec() {
+  return hall_left_ticks_per_sec_cntr;
 }
+
+
+
 
 // Return right motor ticks since start-up.
 // This function has to be call frquent enugh to capture all hall sensor transitions.
@@ -289,18 +313,6 @@ int hall_right_ticks()
 // Green wire -> pin19
 // Yellow wire -> pin20
 //
-static uint hall_left_bad_state_cntr = 0;
-static int hall_left_ticks_cntr = 0;
-static int hall_left_ticks_per_sec_cntr = 0;
-
-inline unsigned long hall_left_ticks_per_sec() {
-  return hall_left_ticks_per_sec_cntr;
-}
-
-inline void hall_left_ticks_reset() {
-  hall_left_ticks_cntr = 0;
-}
-
 int hall_left_ticks()
 {
   static uint hall_state = 0;
@@ -404,19 +416,6 @@ byte weight_prf[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
 
 // ---------------------------------------------------------------------------------
 
-void workout_wait_for_start()
-{
-  // Wait for cables pull.
-  while( hall_right_ticks() == 0 && hall_left_ticks() == 0 ) {
-    Serial.printf("Waiting for cables pull...\n");
-    motor_both_torque( 0 );  
-  }
-  hall_right_bad_state_cntr = 0;
-  hall_left_bad_state_cntr = 0;  
-}
-
-// ---------------------------------------------------------------------------------
-
 // Geometry
 #define TICKS_PER_ROTATION 89.0
 #define WHEEL_DIAMETER 12.5
@@ -431,7 +430,7 @@ void workout( byte prf_tbl[], int prf_tbl_len )
   int left_speed = 0;
   //int left_comp = 0;
   
-  while( 1 )
+  while( cmd_continue() )
   {
     int right_ticks = hall_right_ticks();
     int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
@@ -483,8 +482,8 @@ void workout( byte prf_tbl[], int prf_tbl_len )
 
     //right_torque *= 3;
     //left_torque *= 3;
-    motor_right_torque_smooth( -right_torque );
-    motor_left_torque_smooth( -left_torque );
+    motor_right_torque_smooth( right_torque );
+    motor_left_torque_smooth( left_torque );
         
     // Print out ticks, distance and torque.
     Serial.printf("R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, ticks_per_sec=%d\n", \
@@ -499,6 +498,42 @@ void workout( byte prf_tbl[], int prf_tbl_len )
 // ---------------------------------------------------------------------------------
 // --------------------------------- Main Loop -------------------------------------
 // ---------------------------------------------------------------------------------
+
+inline void cmd_service_motor()
+{
+  hall_right_ticks();
+  hall_left_ticks();
+  motor_both_torque( 150 );  
+}
+
+// ---------------------------------------------------------------------------------
+
+void cmd_wait_for_start()
+{
+  // Wait for cables pull.
+  while( hall_right_ticks() == 0 && hall_left_ticks() == 0 ) {
+    Serial.printf("Waiting for cables pull...\n");
+    motor_both_torque( 0 );  
+  }   
+}
+
+// ---------------------------------------------------------------------------------
+
+bool cmd_continue()
+{
+  if ( !Serial.available()) {
+    return true;
+  }
+  
+  int in_byte = Serial.read();
+  while( 1 ) {
+    Serial.printf( "Received %c\n", in_byte );
+    cmd_service_motor();   
+  }
+  
+  return true;  
+}
+
 
 void setup() {
   // Initialize serial/USB communication at 9600 bits per second:
@@ -534,16 +569,17 @@ void loop()
   digitalWrite(led, HIGH);   // turn the LED on (HIGH is the voltage level)
   // motor_up_down_test( 200 );
   //hall_sensors_test();
-  workout_wait_for_start();
+  cmd_wait_for_start();
   motor_wind_back( 150 );
-  hall_right_ticks_reset();
-  hall_left_ticks_reset();
+  hall_reset();
+  //hall_right_ticks_reset();
+  //hall_left_ticks_reset();
   //workout( spring_prf, sizeof(spring_prf) );
   workout( weight_prf, sizeof(weight_prf) );
   Serial.println( "----------------------------" );
   //while (1) {
   // Serial.print("Finished wind back\n");
-  // motor_both_torque( -80 );
+  // motor_both_torque( 80 );
   //}
   //int incomingByte;
     //while (Serial1.available() > 0) {
