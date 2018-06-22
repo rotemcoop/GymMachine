@@ -409,7 +409,7 @@ byte weight_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                        W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,
                        W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4 };
 
-workout_prf_t weight_prf = { "Weight", 0, 1, sizeof(weight_tbl), weight_tbl };
+workout_prf_t weight_prf = { "Weight", 0, 4, sizeof(weight_tbl), weight_tbl };
 
 // ---------------------------------------------------------------------------------
 
@@ -430,7 +430,7 @@ byte spring_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                       130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
-workout_prf_t spring_prf = { "Spring", 0, 1, sizeof(spring_tbl), spring_tbl };
+workout_prf_t spring_prf = { "Spring", 0, 4, sizeof(spring_tbl), spring_tbl };
 
 // ---------------------------------------------------------------------------------
 
@@ -445,7 +445,7 @@ byte mtn_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                     88,  86,  84,  82,  80,  78,  76,  74,  72,  70,
                     68,  66,  64,  62,  60,  58,  56,  54,  52,  50 };
        
-workout_prf_t mtn_prf = { "Mountain", 0, 1, sizeof(mtn_tbl), mtn_tbl };
+workout_prf_t mtn_prf = { "Mountain", 0, 4, sizeof(mtn_tbl), mtn_tbl };
 
 // ---------------------------------------------------------------------------------
 
@@ -465,7 +465,7 @@ void workout( workout_prf_t* prf )
     int right_ticks = hall_right_ticks();
     int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
     int right_distance = constrain( right_distance_raw, 0, (prf->len - 1) );
-    int right_torque = prf->tbl[ right_distance ]*4;
+    int right_torque = prf->tbl[ right_distance ] * prf->mult;
     if( right_torque != 0 ) right_torque += prf->adder;
         
     right_speed = hall_right_ticks_per_sec();
@@ -489,7 +489,7 @@ void workout( workout_prf_t* prf )
     int left_ticks = hall_left_ticks();
     int left_distance_raw = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
     int left_distance = constrain( left_distance_raw, 0, (prf->len - 1) );
-    int left_torque = prf->tbl[ left_distance ]*4;
+    int left_torque = prf->tbl[ left_distance ] * prf->mult;
     if( left_torque != 0 ) left_torque += prf->adder;
     
     left_speed = hall_left_ticks_per_sec();
@@ -514,8 +514,8 @@ void workout( workout_prf_t* prf )
     motor_left_torque_smooth( left_torque );
         
     // Print out ticks, distance and torque.
-    Serial.printf("Prf=%s, adder=%d, R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, ticks_per_sec=%d\n", \
-                   prf->name, prf->adder, right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
+    Serial.printf("Prf=%s, adder=%d, mult=%d, R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, ticks_per_sec=%d\n", \
+                   prf->name, prf->adder, prf->mult, right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
                    right_speed, left_speed, hall_right_ticks_per_sec() );
 
     //Serial.printf("left_ticks=%d, left_distance=%u, left_torque=%d, lef_bad_state_cntr=%d \n", \
@@ -610,6 +610,14 @@ void cmd_main()
       case '-':
         workout_prf->adder -= 10;
         break;  
+      
+      case '*':
+        workout_prf->mult += 1;
+        break;
+
+      case '/':
+        workout_prf->mult = constrain( workout_prf->mult-1, 1, workout_prf->mult );
+        break;
       
       default:
         Serial.printf("received invalid input\n");
