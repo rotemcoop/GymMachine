@@ -514,26 +514,6 @@ void workout( workout_prf_t* prf )
     
     left_torque = max( left_torque, 0 );
     
-/*    int left_ticks = hall_left_ticks();
-    int left_distance_raw = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
-    int left_distance = constrain( left_distance_raw, 0, (prf->len - 1) );
-    int left_torque = prf->tbl[ left_distance ] * prf->mult;
-    if( left_torque != 0 ) left_torque += prf->adder;
-    
-    left_speed = hall_left_ticks_per_sec();
-    if( left_speed > 0 ) {
-      left_torque -= left_speed*2;
-    }
-    else if( left_speed < 0 ) {
-      left_torque += DIRECTION_COMP;
-    }
-
-    if( left_distance <= 0 ) {
-      left_torque = 0;
-    }
-    
-    left_torque = max( left_torque, 0 );
-*/
     //--------------------------------------------------
 
     motor_right_torque_smooth( right_torque );
@@ -543,9 +523,6 @@ void workout( workout_prf_t* prf )
     Serial.printf("Prf=%s, adder=%d, mult=%d, R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, ticks_per_sec=%d\n", \
                    prf->name, prf->adder, prf->mult, right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
                    right_speed, left_speed, hall_right_ticks_per_sec() );
-
-    //Serial.printf("left_ticks=%d, left_distance=%u, left_torque=%d, lef_bad_state_cntr=%d \n", \
-    //               left_ticks,    left_distance,    left_torque,    hall_left_bad_state_cntr );
   }
 }
 
