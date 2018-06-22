@@ -664,7 +664,7 @@ void loop()
   cmd_wait_for_start();
   cmd_main();
   //motor_up_down_test( 200 );
-  //hall_sensors_test();//motor_wind_back( 150 );
-  
+  //hall_sensors_test();
+    
   Serial.println( "----------------------------" );
 }
