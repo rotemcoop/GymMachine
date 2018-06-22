@@ -30,10 +30,6 @@ typedef struct {
 // --------------------------------- Golbal Data -----------------------------------
 // ---------------------------------------------------------------------------------
 
-// Pin 13 has an LED connected on most Arduino boards.
-int led = 13;
-
-
 
 // ---------------------------------------------------------------------------------
 // ---------------------------- Serial Communication -------------------------------
@@ -632,6 +628,7 @@ void cmd_main()
 }
 
 
+
 void setup() {
   // Initialize serial/USB communication at 9600 bits per second:
   Serial.begin(9600);
@@ -654,34 +651,20 @@ void setup() {
   //pinMode(22, INPUT_PULLUP);
   //pinMode(23, INPUT_PULLUP);
 
-  // initialize the digital pin as an output.
+  // Turn on LED. Pin 13 has an LED connected on most Arduino boards.
+  int led = 13;
   pinMode(led, OUTPUT);
+  digitalWrite(led, HIGH);  
 }
 
 //---------------------------------------------------------------------------
 
 void loop()
 {
-  // Blink the LED
-  digitalWrite(led, HIGH);   // turn the LED on (HIGH is the voltage level)
-  // motor_up_down_test( 200 );
-  //hall_sensors_test();
   cmd_wait_for_start();
-  //motor_wind_back( 150 );
-  //hall_reset();
-  //hall_right_ticks_reset();
-  //hall_left_ticks_reset();
-  //workout( spring_prf, sizeof(spring_prf) );
-  //workout( &weight_prf );
   cmd_main();
-  Serial.println( "----------------------------" );
-
-
-
+  //motor_up_down_test( 200 );
+  //hall_sensors_test();//motor_wind_back( 150 );
   
-  //int incomingByte;
-    //while (Serial1.available() > 0) {
-    //incomingByte = Serial1.read();
-    //Serial.print("UART received: ");
-    //Serial.println(incomingByte, DEC);
+  Serial.println( "----------------------------" );
 }
