@@ -550,8 +550,6 @@ void cmd_wait_for_start()
 
 // ---------------------------------------------------------------------------------
 
-//cmd_t cmd = CMD_PRF_CHANGE;
-
 bool cmd_continue()
 {
   if( Serial.available() ) {
