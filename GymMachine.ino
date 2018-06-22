@@ -434,7 +434,6 @@ workout_prf_t spring_prf = { "Spring", 0, 4, sizeof(spring_tbl), spring_tbl };
 
 // ---------------------------------------------------------------------------------
 
-#define M1 50
 byte mtn_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                     50,  52,  54,  56,  58,  60,  62,  64,  66,  68,
                     70,  72,  74,  76,  78,  80,  82,  84,  86,  88,
@@ -449,6 +448,20 @@ workout_prf_t mtn_prf = { "Mountain", 0, 4, sizeof(mtn_tbl), mtn_tbl };
 
 // ---------------------------------------------------------------------------------
 
+byte v_tbl[] =   {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+                   128, 126, 124, 122, 120, 118, 116, 114, 112, 110,
+                   108, 106, 104, 102, 100,  98,  96,  94,  92,  90,
+                    88,  86,  84,  82,  80,  78,  76,  74,  72,  70,
+                    68,  66,  64,  62,  60,  58,  56,  54,  52,  50,
+                    50,  52,  54,  56,  58,  60,  62,  64,  66,  68,
+                    70,  72,  74,  76,  78,  80,  82,  84,  86,  88,
+                    90,  92,  94,  96,  98, 100, 102, 104, 106, 108,
+                   110, 112, 114, 116, 118, 120, 122, 124, 126, 128 };
+       
+workout_prf_t v_prf = { "V-Shape", 0, 4, sizeof(v_tbl), v_tbl };
+
+// ---------------------------------------------------------------------------------
+
 // Geometry
 #define TICKS_PER_ROTATION 89.0
 #define WHEEL_DIAMETER 12.5
@@ -457,9 +470,6 @@ workout_prf_t mtn_prf = { "Mountain", 0, 4, sizeof(mtn_tbl), mtn_tbl };
 void workout( workout_prf_t* prf )
 {
   // Aply torqueBased based on distance the cabled is pulled. 
-  int right_speed = 0;
-  int left_speed = 0;
-  
   while( cmd_continue() )
   {
     int right_ticks = hall_right_ticks();
@@ -468,13 +478,11 @@ void workout( workout_prf_t* prf )
     int right_torque = prf->tbl[ right_distance ] * prf->mult;
     if( right_torque != 0 ) right_torque += prf->adder;
         
-    right_speed = hall_right_ticks_per_sec();
+    int right_speed = hall_right_ticks_per_sec();
     if( right_speed > 0 ) {
-      //right_torque *= 2;
       right_torque -= right_speed*2;
     }
     else if( right_speed < 0 ) {  
-      //right_torque -= right_speed;
       right_torque += DIRECTION_COMP;
     }
 
@@ -491,14 +499,12 @@ void workout( workout_prf_t* prf )
     int left_distance = constrain( left_distance_raw, 0, (prf->len - 1) );
     int left_torque = prf->tbl[ left_distance ] * prf->mult;
     if( left_torque != 0 ) left_torque += prf->adder;
-    
-    left_speed = hall_left_ticks_per_sec();
+        
+    int left_speed = hall_left_ticks_per_sec();
     if( left_speed > 0 ) {
-      //left_torque *= 2;
       left_torque -= left_speed*2;
     }
-    else if( left_speed < 0 ) {
-      //left_torque -= left_speed;
+    else if( left_speed < 0 ) {  
       left_torque += DIRECTION_COMP;
     }
 
@@ -507,7 +513,27 @@ void workout( workout_prf_t* prf )
     }
     
     left_torque = max( left_torque, 0 );
+    
+/*    int left_ticks = hall_left_ticks();
+    int left_distance_raw = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
+    int left_distance = constrain( left_distance_raw, 0, (prf->len - 1) );
+    int left_torque = prf->tbl[ left_distance ] * prf->mult;
+    if( left_torque != 0 ) left_torque += prf->adder;
+    
+    left_speed = hall_left_ticks_per_sec();
+    if( left_speed > 0 ) {
+      left_torque -= left_speed*2;
+    }
+    else if( left_speed < 0 ) {
+      left_torque += DIRECTION_COMP;
+    }
 
+    if( left_distance <= 0 ) {
+      left_torque = 0;
+    }
+    
+    left_torque = max( left_torque, 0 );
+*/
     //--------------------------------------------------
 
     motor_right_torque_smooth( right_torque );
@@ -603,6 +629,10 @@ void cmd_main()
         workout_prf = &mtn_prf;
         break;
       
+      case 'v':
+        workout_prf = &v_prf;
+        break;
+        
       case '+':
         workout_prf->adder += 10;
         break;
