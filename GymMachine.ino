@@ -19,10 +19,12 @@ typedef enum {
 } cmd_t;
 
 typedef struct {
-  char* name;
-  uint len;
-  byte* tbl;
-} work_prf_t;
+  char*   name;
+  int     adder;
+  int     mult;
+  uint    len;
+  byte*   tbl;
+} workout_prf_t;
 
 // ---------------------------------------------------------------------------------
 // --------------------------------- Golbal Data -----------------------------------
@@ -407,11 +409,12 @@ byte weight_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                        W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,
                        W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4 };
 
-work_prf_t weight_prf = { "Weight", sizeof(weight_tbl), weight_tbl };
+workout_prf_t weight_prf = { "Weight", 0, 1, sizeof(weight_tbl), weight_tbl };
 
 // ---------------------------------------------------------------------------------
 
-byte spring_tbl[] = {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
+byte spring_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                        10,  11,  12,  13,  14,  15,  16,  17,  18,  19,
                        20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
                        30,  31,  32,  33,  34,  35,  36,  37,  38,  38,
@@ -427,7 +430,7 @@ byte spring_tbl[] = {   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                       130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
-work_prf_t spring_prf = { "Spring", sizeof(spring_tbl), spring_tbl };
+workout_prf_t spring_prf = { "Spring", 0, 1, sizeof(spring_tbl), spring_tbl };
 
 // ---------------------------------------------------------------------------------
 
@@ -442,7 +445,7 @@ byte mtn_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                     88,  86,  84,  82,  80,  78,  76,  74,  72,  70,
                     68,  66,  64,  62,  60,  58,  56,  54,  52,  50 };
        
-work_prf_t mtn_prf = { "Mountain", sizeof(mtn_tbl), mtn_tbl };
+workout_prf_t mtn_prf = { "Mountain", 0, 1, sizeof(mtn_tbl), mtn_tbl };
 
 // ---------------------------------------------------------------------------------
 
@@ -451,7 +454,7 @@ work_prf_t mtn_prf = { "Mountain", sizeof(mtn_tbl), mtn_tbl };
 #define WHEEL_DIAMETER 12.5
 #define DIRECTION_COMP 100
 
-void workout( work_prf_t* prf )
+void workout( workout_prf_t* prf )
 {
   // Aply torqueBased based on distance the cabled is pulled. 
   int right_speed = 0;
@@ -461,16 +464,16 @@ void workout( work_prf_t* prf )
   {
     int right_ticks = hall_right_ticks();
     int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
-    int right_distance = min( right_distance_raw, (prf->len - 1) );
-    right_distance = max( right_distance, 0 );
-    int right_torque = prf->tbl[ right_distance ] * 4;
-    
+    int right_distance = constrain( right_distance_raw, 0, (prf->len - 1) );
+    int right_torque = prf->tbl[ right_distance ]*4;
+    if( right_torque != 0 ) right_torque += prf->adder;
+        
     right_speed = hall_right_ticks_per_sec();
     if( right_speed > 0 ) {
       //right_torque *= 2;
       right_torque -= right_speed*2;
     }
-    else if( right_speed < 0 ) {
+    else if( right_speed < 0 ) {  
       //right_torque -= right_speed;
       right_torque += DIRECTION_COMP;
     }
@@ -485,9 +488,9 @@ void workout( work_prf_t* prf )
 
     int left_ticks = hall_left_ticks();
     int left_distance_raw = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
-    int left_distance = min( left_distance_raw, (prf->len - 1) );
-    left_distance = max( left_distance, 0 );
-    int left_torque = prf->tbl[ left_distance ] * 4;
+    int left_distance = constrain( left_distance_raw, 0, (prf->len - 1) );
+    int left_torque = prf->tbl[ left_distance ]*4;
+    if( left_torque != 0 ) left_torque += prf->adder;
     
     left_speed = hall_left_ticks_per_sec();
     if( left_speed > 0 ) {
@@ -511,8 +514,8 @@ void workout( work_prf_t* prf )
     motor_left_torque_smooth( left_torque );
         
     // Print out ticks, distance and torque.
-    Serial.printf("Prf=%s, R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, ticks_per_sec=%d\n", \
-                   prf->name, right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
+    Serial.printf("Prf=%s, adder=%d, R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, ticks_per_sec=%d\n", \
+                   prf->name, prf->adder, right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
                    right_speed, left_speed, hall_right_ticks_per_sec() );
 
     //Serial.printf("left_ticks=%d, left_distance=%u, left_torque=%d, lef_bad_state_cntr=%d \n", \
@@ -572,10 +575,14 @@ void cmd_print( char cmd )
 
 void cmd_main()
 {
+  workout_prf_t* workout_prf = &weight_prf;
   while(1)
   {
-    motor_wind_back( 150 );
-    hall_reset();
+    if( !Serial.available() ) {
+      motor_wind_back( 150 );
+      hall_reset();
+      workout( workout_prf );
+    }
     int input = Serial.read();
     //cmd_print( input );
     switch (input)
@@ -585,22 +592,29 @@ void cmd_main()
         break;
       
       case 'w':
-        workout( &weight_prf );
+        workout_prf = &weight_prf;
         break;
 
       case 's':
-        workout( &spring_prf );
+        workout_prf = &spring_prf;
         break;
         
       case 'm':
-        workout( &mtn_prf );
+        workout_prf = &mtn_prf;
         break;
+      
+      case '+':
+        workout_prf->adder += 10;
+        break;
+
+      case '-':
+        workout_prf->adder -= 10;
+        break;  
       
       default:
         Serial.printf("received invalid input\n");
-        workout( &weight_prf );
         break;
-    }
+    }    
   }
 }
 
@@ -640,12 +654,12 @@ void loop()
   // motor_up_down_test( 200 );
   //hall_sensors_test();
   cmd_wait_for_start();
-  motor_wind_back( 150 );
-  hall_reset();
+  //motor_wind_back( 150 );
+  //hall_reset();
   //hall_right_ticks_reset();
   //hall_left_ticks_reset();
   //workout( spring_prf, sizeof(spring_prf) );
-  workout( &weight_prf );
+  //workout( &weight_prf );
   cmd_main();
   Serial.println( "----------------------------" );
 
