@@ -240,6 +240,8 @@ static int hall_right_ticks_cntr = 0;
 static int hall_left_ticks_cntr = 0;
 static int hall_right_ticks_per_sec_cntr = 0;
 static int hall_left_ticks_per_sec_cntr = 0;
+static int hall_right_accel_cntr = 0;
+static int hall_left_accel_cntr = 0;
 
 void hall_reset() {
   hall_right_bad_state_cntr = 0;
@@ -248,17 +250,9 @@ void hall_reset() {
   hall_left_ticks_cntr = 0;
   hall_right_ticks_per_sec_cntr = 0;
   hall_left_ticks_per_sec_cntr = 0;
+  hall_right_accel_cntr = 0;
+  hall_left_accel_cntr = 0;
 }
-
-/*
-inline void hall_right_ticks_reset() {
-  hall_right_ticks_cntr = 0;
-}
-
-inline void hall_left_ticks_reset() {
-  hall_left_ticks_cntr = 0;
-}
-*/
 
 inline unsigned long hall_right_ticks_per_sec() {
   return hall_right_ticks_per_sec_cntr;
@@ -268,8 +262,15 @@ inline unsigned long hall_left_ticks_per_sec() {
   return hall_left_ticks_per_sec_cntr;
 }
 
+inline unsigned long hall_right_accel() {
+  return hall_right_accel_cntr;
+}
 
+inline unsigned long hall_left_accel() {
+  return hall_left_accel_cntr;
+}
 
+// ---------------------------------------------------------------------------------
 
 // Return right motor ticks since start-up.
 // This function has to be call frquent enugh to capture all hall sensor transitions.
@@ -613,6 +614,8 @@ void cmd_parm_adjust( int* param )
     }
   }        
 }
+
+// ---------------------------------------------------------------------------------
 
 void cmd_main()
 {
