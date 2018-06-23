@@ -22,6 +22,8 @@ typedef struct {
   char*   name;
   int     adder;
   int     mult;
+  int     pull;
+  int     rtrn;
   uint    len;
   byte*   tbl;
 } workout_prf_t;
@@ -405,7 +407,7 @@ byte weight_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                        W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,
                        W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4 };
 
-workout_prf_t weight_prf = { "Weight", 0, 4, sizeof(weight_tbl), weight_tbl };
+workout_prf_t weight_prf = { "Weight", 0, 4, 0, 0, sizeof(weight_tbl), weight_tbl };
 
 // ---------------------------------------------------------------------------------
 
@@ -426,7 +428,28 @@ byte spring_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                       130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
-workout_prf_t spring_prf = { "Spring", 0, 4, sizeof(spring_tbl), spring_tbl };
+workout_prf_t spring_prf = { "Spring", 0, 4, 0, 0, sizeof(spring_tbl), spring_tbl };
+
+// ---------------------------------------------------------------------------------
+
+byte inv_spring_tbl[] = {   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+                          149,148,147,146,145,144,143,142,141,140,
+                          139,138,137,136,135,134,133,132,131,130,
+                          129,128,127,126,125,124,123,122,121,120,
+                          119,118,117,116,115,114,113,112,111,110,
+                          109,108,107,106,105,104,103,102,101,100,
+                          99,98,97,96,95,94,93,92,91,90,
+                          89,88,87,86,85,84,83,82,81,80,
+                          79,78,77,76,75,74,73,72,71,70,
+                          69,68,67,66,65,64,63,62,61,60,
+                          59,58,57,56,55,54,53,52,51,50,
+                          49,48,47,46,45,44,43,42,41,40,
+                          39,38,37,36,35,34,33,32,31,30,
+                          29,28,27,26,25,24,23,22,21,20,
+                          19,18,17,16,15,14,13,12,11,10,
+                          9,8,7,6,5,4,3,2,1,0 };
+
+workout_prf_t inv_spring_prf = { "Inv-Spring", 0, 4, 0, 0, sizeof(inv_spring_tbl), inv_spring_tbl };
 
 // ---------------------------------------------------------------------------------
 
@@ -440,7 +463,7 @@ byte mtn_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                     88,  86,  84,  82,  80,  78,  76,  74,  72,  70,
                     68,  66,  64,  62,  60,  58,  56,  54,  52,  50 };
        
-workout_prf_t mtn_prf = { "Mountain", 0, 4, sizeof(mtn_tbl), mtn_tbl };
+workout_prf_t mtn_prf = { "Mountain", 0, 4, 0, 0, sizeof(mtn_tbl), mtn_tbl };
 
 // ---------------------------------------------------------------------------------
 
@@ -454,7 +477,7 @@ byte v_tbl[] =   {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                     90,  92,  94,  96,  98, 100, 102, 104, 106, 108,
                    110, 112, 114, 116, 118, 120, 122, 124, 126, 128 };
        
-workout_prf_t v_prf = { "V-Shape", 0, 4, sizeof(v_tbl), v_tbl };
+workout_prf_t v_prf = { "V-Shape", 0, 4, 0, 0, sizeof(v_tbl), v_tbl };
 
 // ---------------------------------------------------------------------------------
 
@@ -477,9 +500,11 @@ void workout( workout_prf_t* prf )
     int right_speed = hall_right_ticks_per_sec();
     if( right_speed > 0 ) {
       right_torque -= right_speed*2;
+      right_torque += prf->pull;
     }
     else if( right_speed < 0 ) {  
       right_torque += DIRECTION_COMP;
+      right_torque += prf->rtrn;
     }
 
     if( right_distance <= 0 ) {
@@ -499,9 +524,11 @@ void workout( workout_prf_t* prf )
     int left_speed = hall_left_ticks_per_sec();
     if( left_speed > 0 ) {
       left_torque -= left_speed*2;
+      left_torque += prf->pull;
     }
     else if( left_speed < 0 ) {  
       left_torque += DIRECTION_COMP;
+      left_torque += prf->rtrn;
     }
 
     if( left_distance <= 0 ) {
@@ -516,9 +543,9 @@ void workout( workout_prf_t* prf )
     motor_left_torque_smooth( left_torque );
         
     // Print out ticks, distance and torque.
-    Serial.printf("Prf=%s, adder=%d, mult=%d, R/L ticks=%d/%d, distance=%d/%d, torque=%d/%d, speed=%d/%d, ticks_per_sec=%d\n", \
-                   prf->name, prf->adder, prf->mult, right_ticks, left_ticks, right_distance, left_distance, right_torque, left_torque, \
-                   right_speed, left_speed, hall_right_ticks_per_sec() );
+    Serial.printf("Prf=%s, adder=%d, mult=%d, pull/return=%d/%d, R/L ticks=%d/%d, distance=%d/%d, speed=%d/%d, ticks_per_sec=%d, torque=%d/%d\n", \
+                   prf->name, prf->adder, prf->mult, prf->pull, prf->rtrn, right_ticks, left_ticks, right_distance, left_distance, \
+                   right_speed, left_speed, hall_right_ticks_per_sec(), right_torque, left_torque );
   }
 }
 
@@ -570,6 +597,23 @@ void cmd_print( char cmd )
 
 // ---------------------------------------------------------------------------------
 
+void cmd_parm_adjust( int* param )
+{
+  while( Serial.available() )
+  {
+    int val = Serial.read();
+    if( val == '+' ) {
+      *param += 10;
+    }
+    else if( val == '-') {
+      *param -= 10;
+    }
+    else if( val == '0') {
+       *param = 0;
+    }
+  }        
+}
+
 void cmd_main()
 {
   workout_prf_t* workout_prf = &weight_prf;
@@ -594,6 +638,10 @@ void cmd_main()
 
       case 's':
         workout_prf = &spring_prf;
+        break;
+
+      case 'i':
+        workout_prf = &inv_spring_prf;
         break;
         
       case 'm':
@@ -620,6 +668,14 @@ void cmd_main()
         workout_prf->mult = constrain( workout_prf->mult-1, 1, workout_prf->mult );
         break;
       
+      case 'p':
+        cmd_parm_adjust( &workout_prf->pull );
+        break;
+            
+      case 'r':
+        cmd_parm_adjust( &workout_prf->rtrn );
+        break;
+        
       default:
         Serial.printf("received invalid input\n");
         break;
