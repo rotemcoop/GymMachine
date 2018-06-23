@@ -234,6 +234,8 @@ enum {
 
 // ---------------------------------------------------------------------------------
 
+#define INTERVAL 100 // in millisec
+
 static uint hall_right_bad_state_cntr = 0;
 static uint hall_left_bad_state_cntr = 0;
 static int hall_right_ticks_cntr = 0;
@@ -254,19 +256,19 @@ void hall_reset() {
   hall_left_accel_cntr = 0;
 }
 
-inline unsigned long hall_right_ticks_per_sec() {
+inline int hall_right_ticks_per_sec() {
   return hall_right_ticks_per_sec_cntr;
 }
 
-inline unsigned long hall_left_ticks_per_sec() {
+inline int hall_left_ticks_per_sec() {
   return hall_left_ticks_per_sec_cntr;
 }
 
-inline unsigned long hall_right_accel() {
+inline int hall_right_accel() {
   return hall_right_accel_cntr;
 }
 
-inline unsigned long hall_left_accel() {
+inline int hall_left_accel() {
   return hall_left_accel_cntr;
 }
 
@@ -301,19 +303,19 @@ int hall_right_ticks()
   //--------------------------------------------------------------------------------
 
   // Calculate ticks per second
-  #define INTERVAL 100 // in millisec
   static int ticks_prev = hall_right_ticks_cntr;
+  static int ticks_per_sec_prev = hall_right_ticks_per_sec_cntr;
   static unsigned long time_prev = millis();
 
   unsigned long time_curr = millis();
   if( time_curr >= time_prev + INTERVAL ) {
     hall_right_ticks_per_sec_cntr = (hall_right_ticks_cntr - ticks_prev) * (1000/INTERVAL);
+    hall_right_accel_cntr = (hall_right_ticks_per_sec_cntr - ticks_per_sec_prev) * (1000/INTERVAL);
     ticks_prev = hall_right_ticks_cntr;
+    ticks_per_sec_prev = hall_right_ticks_per_sec_cntr;
     time_prev = time_curr;
   }
 
-  //--------------------------------------------------------------------------------
-  
   return hall_right_ticks_cntr;  
 }
 
@@ -349,19 +351,19 @@ int hall_left_ticks()
   //--------------------------------------------------------------------------------
 
   // Calculate ticks per second
-  #define INTERVAL 100 // in millisec
   static int ticks_prev = hall_left_ticks_cntr;
+  static int ticks_per_sec_prev = hall_left_ticks_per_sec_cntr;
   static unsigned long time_prev = millis();
 
   unsigned long time_curr = millis();
   if( time_curr >= time_prev + INTERVAL ) {
     hall_left_ticks_per_sec_cntr = (hall_left_ticks_cntr - ticks_prev) * (1000/INTERVAL);
+    hall_left_accel_cntr = (hall_left_ticks_per_sec_cntr - ticks_per_sec_prev) * (1000/INTERVAL);
     ticks_prev = hall_left_ticks_cntr;
+    ticks_per_sec_prev = hall_left_ticks_per_sec_cntr;
     time_prev = time_curr;
   }
 
-  //--------------------------------------------------------------------------------
-  
   return hall_left_ticks_cntr;  
 }
 
@@ -507,6 +509,7 @@ void workout( workout_prf_t* prf )
       right_torque += DIRECTION_COMP;
       right_torque += prf->rtrn;
     }
+    right_torque -= hall_right_accel()/10;
 
     if( right_distance <= 0 ) {
       right_torque = 0;
@@ -531,7 +534,8 @@ void workout( workout_prf_t* prf )
       left_torque += DIRECTION_COMP;
       left_torque += prf->rtrn;
     }
-
+    left_torque -= hall_left_accel()/10;
+    
     if( left_distance <= 0 ) {
       left_torque = 0;
     }
@@ -544,9 +548,12 @@ void workout( workout_prf_t* prf )
     motor_left_torque_smooth( left_torque );
         
     // Print out ticks, distance and torque.
-    Serial.printf("Prf=%s, adder=%d, mult=%d, pull/return=%d/%d, R/L ticks=%d/%d, distance=%d/%d, speed=%d/%d, ticks_per_sec=%d, torque=%d/%d\n", \
+    /*
+    Serial.printf("Prf=%s, adder=%d, mult=%d, pull/return=%d/%d, R/L ticks=%d/%d, distance=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
                    prf->name, prf->adder, prf->mult, prf->pull, prf->rtrn, right_ticks, left_ticks, right_distance, left_distance, \
-                   right_speed, left_speed, hall_right_ticks_per_sec(), right_torque, left_torque );
+                   right_speed, left_speed, hall_right_accel(), hall_left_accel(), right_torque, left_torque );
+    */               
+    Serial.printf( "speed=%d/%d, accel=%d/%d\n", right_speed, left_speed, hall_right_accel()/10, hall_left_accel()/10 );
   }
 }
 
