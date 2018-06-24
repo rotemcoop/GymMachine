@@ -104,10 +104,10 @@ void motor_right_torque_smooth( int16_t value ) {
   static int16_t value_last = 0;
   value_target = value;
   if( value_last < value_target ) {
-    value_last++;
+    value_last += 2;
   }
   else if( value_last > value_target ) {
-    value_last--;    
+    value_last -= 2;    
   }
   motor_right_torque( value_last );
 }
@@ -117,10 +117,10 @@ void motor_left_torque_smooth( int16_t value ) {
   static int16_t value_last = 0;
   value_target = value;
   if( value_last < value_target ) {
-    value_last++;
+    value_last += 2;
   }
   else if( value_last > value_target ) {
-    value_last--;    
+    value_last -=2;    
   }
   motor_left_torque( value_last );
 }
@@ -309,8 +309,8 @@ int hall_right_ticks()
 
   unsigned long time_curr = millis();
   if( time_curr >= time_prev + INTERVAL ) {
-    hall_right_speed_cntr = (hall_right_ticks_cntr - ticks_prev) * (1000/INTERVAL);
-    hall_right_accel_cntr = (hall_right_speed_cntr - speed_prev) * (1000/INTERVAL);
+    hall_right_speed_cntr = (hall_right_speed_cntr + (int)((hall_right_ticks_cntr - ticks_prev) * (1000/INTERVAL)))/2;
+    hall_right_accel_cntr = (hall_right_accel_cntr + (int)((hall_right_speed_cntr - speed_prev) * (1000/INTERVAL)))/2;
     ticks_prev = hall_right_ticks_cntr;
     speed_prev = hall_right_speed_cntr;
     time_prev = time_curr;
@@ -357,8 +357,10 @@ int hall_left_ticks()
 
   unsigned long time_curr = millis();
   if( time_curr >= time_prev + INTERVAL ) {
-    hall_left_speed_cntr = (hall_left_ticks_cntr - ticks_prev) * (1000/INTERVAL);
-    hall_left_accel_cntr = (hall_left_speed_cntr - speed_prev) * (1000/INTERVAL);
+    hall_left_speed_cntr = (hall_left_speed_cntr + (int)((hall_left_ticks_cntr - ticks_prev) * (1000/INTERVAL)))/2;
+    hall_left_accel_cntr = (hall_left_accel_cntr + (int)((hall_left_speed_cntr - speed_prev) * (1000/INTERVAL)))/2;
+    //hall_left_speed_cntr = (hall_left_ticks_cntr - ticks_prev) * (1000/INTERVAL);
+    //hall_left_accel_cntr = (hall_left_speed_cntr - speed_prev) * (1000/INTERVAL);
     ticks_prev = hall_left_ticks_cntr;
     speed_prev = hall_left_speed_cntr;
     time_prev = time_curr;
@@ -509,10 +511,10 @@ void workout( workout_prf_t* prf )
     else if( right_speed < 0 ) {  
       right_torque += DIRECTION_COMP;
       right_torque -= right_speed;
-      right_torque -= hall_right_accel();
+      right_torque -= hall_right_accel()/2;
       right_torque += prf->rtrn;
-    }    
-
+    }
+    
     if( right_distance <= 0 ) {
       right_torque = 0;
     }
@@ -536,7 +538,7 @@ void workout( workout_prf_t* prf )
     else if( left_speed < 0 ) {  
       left_torque += DIRECTION_COMP;
       left_torque -= left_speed;
-      left_torque -= hall_left_accel();
+      left_torque -= hall_left_accel()/2;
       left_torque += prf->rtrn;
     }
     
