@@ -502,14 +502,16 @@ void workout( workout_prf_t* prf )
         
     int right_speed = hall_right_ticks_per_sec();
     if( right_speed > 0 ) {
-      right_torque -= right_speed*2;
+      right_torque -= right_speed;//*2;
+      right_torque -= hall_right_accel()/2;
       right_torque += prf->pull;
     }
     else if( right_speed < 0 ) {  
       right_torque += DIRECTION_COMP;
+      right_torque -= right_speed;
+      right_torque -= hall_right_accel();
       right_torque += prf->rtrn;
-    }
-    right_torque -= hall_right_accel()/10;
+    }    
 
     if( right_distance <= 0 ) {
       right_torque = 0;
@@ -524,7 +526,21 @@ void workout( workout_prf_t* prf )
     int left_distance = constrain( left_distance_raw, 0, (prf->len - 1) );
     int left_torque = prf->tbl[ left_distance ] * prf->mult;
     if( left_torque != 0 ) left_torque += prf->adder;
-        
+
+    int left_speed = hall_left_ticks_per_sec();
+    if( left_speed > 0 ) {
+      left_torque -= left_speed;//*2;
+      left_torque -= hall_left_accel()/2;
+      left_torque += prf->pull;
+    }
+    else if( left_speed < 0 ) {  
+      left_torque += DIRECTION_COMP;
+      left_torque -= left_speed;
+      left_torque -= hall_left_accel();
+      left_torque += prf->rtrn;
+    }    
+
+    /*
     int left_speed = hall_left_ticks_per_sec();
     if( left_speed > 0 ) {
       left_torque -= left_speed*2;
@@ -534,8 +550,8 @@ void workout( workout_prf_t* prf )
       left_torque += DIRECTION_COMP;
       left_torque += prf->rtrn;
     }
-    left_torque -= hall_left_accel()/10;
-    
+    */
+        
     if( left_distance <= 0 ) {
       left_torque = 0;
     }
@@ -548,12 +564,12 @@ void workout( workout_prf_t* prf )
     motor_left_torque_smooth( left_torque );
         
     // Print out ticks, distance and torque.
-    /*
+    
     Serial.printf("Prf=%s, adder=%d, mult=%d, pull/return=%d/%d, R/L ticks=%d/%d, distance=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
                    prf->name, prf->adder, prf->mult, prf->pull, prf->rtrn, right_ticks, left_ticks, right_distance, left_distance, \
-                   right_speed, left_speed, hall_right_accel(), hall_left_accel(), right_torque, left_torque );
-    */               
-    Serial.printf( "speed=%d/%d, accel=%d/%d\n", right_speed, left_speed, hall_right_accel()/10, hall_left_accel()/10 );
+                   right_speed, left_speed, hall_right_accel()/10, hall_left_accel()/10, right_torque, left_torque );
+                   
+    //Serial.printf( "speed=%d/%d, accel=%d/%d\n", right_speed, left_speed, hall_right_accel()/10, hall_left_accel()/10 );
   }
 }
 
