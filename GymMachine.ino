@@ -100,32 +100,30 @@ inline void motor_both_torque( int16_t value ) {
 // ---------------------------------------------------------------------------------
 
 void motor_right_torque_smooth( int16_t value ) {
-  static int16_t value_target = 0;
   static int16_t value_last = 0;
-  value_target = value;
-  if( value_last < value_target ) {
-    value_last += 2;
+  int diff = value - value_last;
+  if( diff > 0 ) {
+    value_last += 2;        
   }
-  else if( value_last > value_target ) {
-    value_last -= 2;    
+  else if( diff < 0 ) {
+    value_last -= 2;     
   }
   motor_right_torque( value_last );
 }
 
 void motor_left_torque_smooth( int16_t value ) {
-  static int16_t value_target = 0;
   static int16_t value_last = 0;
-  value_target = value;
-  if( value_last < value_target ) {
-    value_last += 2;
+  int diff = value - value_last;
+  if( diff > 0 ) {
+    value_last += 2;        
   }
-  else if( value_last > value_target ) {
-    value_last -=2;    
+  else if( diff < 0 ) {
+    value_last -= 2;     
   }
   motor_left_torque( value_last );
 }
 
-void motor_both_torque_smooth( int16_t value ) {
+inline void motor_both_torque_smooth( int16_t value ) {
   motor_right_torque_smooth( value );
   motor_left_torque_smooth( value );
 }
@@ -234,7 +232,7 @@ enum {
 
 // ---------------------------------------------------------------------------------
 
-#define HALL_INTERVAL 101 // in millisec
+#define HALL_INTERVAL 50 // in millisec
 
 static uint hall_right_bad_state_cntr = 0;
 static uint hall_left_bad_state_cntr = 0;
@@ -257,7 +255,7 @@ void hall_reset() {
 }
 
 inline int hall_right_speed() {
-  return hall_right_speed_cntr;
+  return (int) hall_right_speed_cntr;
 }
 
 inline int hall_left_speed() {
@@ -513,15 +511,19 @@ void workout( workout_prf_t* prf )
         
     int right_speed = hall_right_speed();
     if( right_speed > 0 ) {
-      right_torque -= right_speed;//*2;
-      right_torque -= hall_right_accel()/2;
-      right_torque += prf->pull;      
+      if( right_torque != 0 ) {
+        right_torque += prf->pull;
+      }
+      right_torque -= right_speed;
+      right_torque -= hall_right_accel()/2;            
     }
     else if( right_speed < 0 ) {  
-      right_torque += DIRECTION_COMP;
+      if( right_torque != 0 ) {
+        right_torque += prf->rtrn;
+        right_torque += DIRECTION_COMP;
+      }
       right_torque -= right_speed;
-      right_torque -= hall_right_accel()/2;
-      right_torque += prf->rtrn;
+      right_torque -= hall_right_accel()/2;      
     }
     else if( right_distance > 20 && right_torque < DIRECTION_COMP) {
       right_torque += 2;  
@@ -543,20 +545,24 @@ void workout( workout_prf_t* prf )
 
     int left_speed = hall_left_speed();
     if( left_speed > 0 ) {
-      left_torque -= left_speed;//*2;
-      left_torque -= hall_left_accel()/2;
-      left_torque += prf->pull;
-    }
-    else if( left_speed < 0 ) {  
-      left_torque += DIRECTION_COMP;
+      if( left_torque != 0 ) {
+        left_torque += prf->pull;
+      }
       left_torque -= left_speed;
-      left_torque -= hall_left_accel()/2;
-      left_torque += prf->rtrn;
+      left_torque -= hall_left_accel()/2;            
+    }
+    else if( left_speed < 0 ) {
+      if( left_torque != 0 ) {
+        left_torque += prf->rtrn;
+        left_torque += DIRECTION_COMP;
+      }
+      left_torque -= left_speed;
+      left_torque -= hall_left_accel()/2;      
     }
     else if( left_distance > 20 && left_torque < DIRECTION_COMP) {
       left_torque += 2;  
     }
-    
+        
     if( left_distance <= 0 ) {
       left_torque = 0;
     }
