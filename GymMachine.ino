@@ -234,7 +234,7 @@ enum {
 
 // ---------------------------------------------------------------------------------
 
-#define INTERVAL 100 // in millisec
+#define HALL_INTERVAL 101 // in millisec
 
 static uint hall_right_bad_state_cntr = 0;
 static uint hall_left_bad_state_cntr = 0;
@@ -308,9 +308,10 @@ int hall_right_ticks()
   static unsigned long time_prev = millis();
 
   unsigned long time_curr = millis();
-  if( time_curr >= time_prev + INTERVAL ) {
-    hall_right_speed_cntr = (hall_right_speed_cntr + (int)((hall_right_ticks_cntr - ticks_prev) * (1000/INTERVAL)))/2;
-    hall_right_accel_cntr = (hall_right_accel_cntr + (int)((hall_right_speed_cntr - speed_prev) * (1000/INTERVAL)))/2;
+  if( time_curr >= time_prev + HALL_INTERVAL ) {
+    //hall_right_speed_cntr = (int)((hall_right_ticks_cntr - ticks_prev) * (1000/HALL_INTERVAL));
+    hall_right_speed_cntr = (hall_right_speed_cntr + (int)((hall_right_ticks_cntr - ticks_prev) * (1000/HALL_INTERVAL)))/2;
+    hall_right_accel_cntr = (3*hall_right_accel_cntr + (int)((hall_right_speed_cntr - speed_prev) * (1000/HALL_INTERVAL)))/4;
     ticks_prev = hall_right_ticks_cntr;
     speed_prev = hall_right_speed_cntr;
     time_prev = time_curr;
@@ -356,11 +357,10 @@ int hall_left_ticks()
   static unsigned long time_prev = millis();
 
   unsigned long time_curr = millis();
-  if( time_curr >= time_prev + INTERVAL ) {
-    hall_left_speed_cntr = (hall_left_speed_cntr + (int)((hall_left_ticks_cntr - ticks_prev) * (1000/INTERVAL)))/2;
-    hall_left_accel_cntr = (hall_left_accel_cntr + (int)((hall_left_speed_cntr - speed_prev) * (1000/INTERVAL)))/2;
-    //hall_left_speed_cntr = (hall_left_ticks_cntr - ticks_prev) * (1000/INTERVAL);
-    //hall_left_accel_cntr = (hall_left_speed_cntr - speed_prev) * (1000/INTERVAL);
+  if( time_curr >= time_prev + HALL_INTERVAL ) {
+    //hall_left_speed_cntr = (hall_left_ticks_cntr - ticks_prev) * (1000/HALL_INTERVAL);
+    hall_left_speed_cntr = (hall_left_speed_cntr + (int)((hall_left_ticks_cntr - ticks_prev) * (1000/HALL_INTERVAL)))/2;
+    hall_left_accel_cntr = (3*hall_left_accel_cntr + (int)((hall_left_speed_cntr - speed_prev) * (1000/HALL_INTERVAL)))/4;
     ticks_prev = hall_left_ticks_cntr;
     speed_prev = hall_left_speed_cntr;
     time_prev = time_curr;
@@ -486,6 +486,15 @@ workout_prf_t v_prf = { "V-Shape", 0, 4, 0, 0, sizeof(v_tbl), v_tbl };
 
 // ---------------------------------------------------------------------------------
 
+int speed_comp( int speed ) {
+  static int tbl[] = { -20, -10, 0, 10, 20 };
+  
+  
+  for( int i=0; i<sizeof(tbl); i++ ) {
+    
+  }
+}
+
 // Geometry
 #define TICKS_PER_ROTATION 89.0
 #define WHEEL_DIAMETER 12.5
@@ -506,13 +515,16 @@ void workout( workout_prf_t* prf )
     if( right_speed > 0 ) {
       right_torque -= right_speed;//*2;
       right_torque -= hall_right_accel()/2;
-      right_torque += prf->pull;
+      right_torque += prf->pull;      
     }
     else if( right_speed < 0 ) {  
       right_torque += DIRECTION_COMP;
       right_torque -= right_speed;
       right_torque -= hall_right_accel()/2;
       right_torque += prf->rtrn;
+    }
+    else if( right_distance > 20 && right_torque < DIRECTION_COMP) {
+      right_torque += 2;  
     }
     
     if( right_distance <= 0 ) {
@@ -540,6 +552,9 @@ void workout( workout_prf_t* prf )
       left_torque -= left_speed;
       left_torque -= hall_left_accel()/2;
       left_torque += prf->rtrn;
+    }
+    else if( left_distance > 20 && left_torque < DIRECTION_COMP) {
+      left_torque += 2;  
     }
     
     if( left_distance <= 0 ) {
