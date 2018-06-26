@@ -585,6 +585,64 @@ void workout( workout_prf_t* prf )
 }
 
 // ---------------------------------------------------------------------------------
+
+int conv_tbl[][2] = { {225, 30}, {300, 35}, {350, 40}, {400, 45}, {450, 50}, {500, 55}, {600, 60}, {750, 65}, {0, 0} };
+
+void workout_test_strength()
+{
+  motor_wind_back( 150 );
+  hall_reset();
+
+  while( cmd_continue() && hall_right_ticks() < 50 )
+  {
+    hall_right_ticks();
+    hall_left_ticks();
+    motor_both_torque( 0 );
+    Serial.printf("Waiting for cable pull...\n" );
+  }
+
+  while( cmd_continue() && hall_right_speed() > 0 )
+  {
+    hall_right_ticks();
+    hall_left_ticks();
+    motor_both_torque( 50 );
+    Serial.printf("Stop pulling for strenght test start...\n" );
+  }
+
+  int ticks = hall_right_ticks();
+  int torque = 150;
+  int torque_max = torque;
+  while( cmd_continue() && hall_right_ticks() > 50 && ticks > 50 &&
+         (hall_right_ticks() + 50) > ticks )
+  {
+    for(int i=0; i<100; i++) {
+      hall_right_ticks();
+      hall_left_ticks();
+      motor_right_torque( torque );
+      motor_left_torque( 150 );
+      Serial.printf("Strength test torque=%d\n", torque );
+    }
+    torque_max = max( torque_max, torque );
+    torque += 10;
+  }
+
+  int pound_max = conv_tbl[0][1];
+  for(int i=0; conv_tbl[i][0] > 0; i++) {
+    if( conv_tbl[i][0] > torque_max ) {
+      break;
+    }
+    pound_max = conv_tbl[i][1];
+  }
+  
+  while( cmd_continue() ) {
+    motor_both_torque( 150 );
+    Serial.printf("Strength test done, max torque/pound=%d/%d lb\n", torque_max, pound_max );
+  }
+  
+}
+
+
+// ---------------------------------------------------------------------------------
 // --------------------------------- Main Loop -------------------------------------
 // ---------------------------------------------------------------------------------
 
@@ -689,6 +747,10 @@ void cmd_main()
         workout_prf = &v_prf;
         break;
         
+      case 't':
+        workout_test_strength();
+        break;
+      
       case '+':
         workout_prf->adder += 10;
         break;
