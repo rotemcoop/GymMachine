@@ -594,13 +594,19 @@ void workout( workout_prf_t* prf )
     motor_right_torque_smooth( right_torque );
     motor_left_torque_smooth( left_torque );
         
-    // Print out ticks, distance and torque.
+    static int print_cnt=0;
+    if( ++print_cnt > 50 ) //12
+    {
+      print_cnt=0;
+      static int cnt=0;
     
-    Serial.printf("prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
-                   prf->name, prf->add_pull, prf->add_rel, prf->mult_pull, prf->mult_rel, right_ticks, left_ticks, right_distance, left_distance, \
-                   right_speed, left_speed, hall_right_accel()/10, hall_left_accel()/10, right_torque, left_torque );
+      // Print ticks, distance and torque.
+      Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
+                     cnt++, prf->name, prf->add_pull, prf->add_rel, prf->mult_pull, prf->mult_rel, right_ticks, left_ticks, right_distance, left_distance, \
+                     right_speed, left_speed, hall_right_accel()/10, hall_left_accel()/10, right_torque, left_torque );
                    
-    //Serial.printf( "speed=%d/%d, accel=%d/%d\n", right_speed, left_speed, hall_right_accel()/10, hall_left_accel()/10 );
+      //Serial.printf( "speed=%d/%d, accel=%d/%d\n", right_speed, left_speed, hall_right_accel()/10, hall_left_accel()/10 );
+    }
   }
 }
 
