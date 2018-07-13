@@ -595,7 +595,7 @@ void workout( workout_prf_t* prf )
     motor_left_torque_smooth( left_torque );
         
     static int print_cnt=0;
-    if( ++print_cnt > 50 ) //12
+    if( ++print_cnt > 12 ) //12
     {
       print_cnt=0;
       static int cnt=0;
