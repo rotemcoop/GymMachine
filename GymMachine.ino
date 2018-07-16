@@ -14,6 +14,11 @@ typedef enum {
 } hall_t;
 
 typedef enum {
+  DIRECTION_PULL,
+  DIRECTION_REL
+} direction_t;
+
+typedef enum {
   CMD_PRF_CHANGE,
   CMD_STOP
 } cmd_t;
@@ -28,18 +33,6 @@ typedef struct {
   uint    len;
   byte*   tbl;
 } workout_prf_t;
-
-/*
-typedef struct {
-  char*   name;
-  int     adder;
-  int     mult;
-  int     pull;
-  int     rtrn;
-  uint    len;
-  byte*   tbl;
-} workout_prf_t;
-*/
 
 // ---------------------------------------------------------------------------------
 // --------------------------------- Golbal Data -----------------------------------
@@ -271,6 +264,18 @@ inline int hall_right_speed() {
   return (int) hall_right_speed_cntr;
 }
 
+/*
+inline int hall_right_speed_smooth() {
+  static int direction_changed_cntr = 10;
+  static int speed_prev = 1;
+  static bool direction_changed = flase;
+  if( hall_right_speed_cntr * speed_prev <= 0 ) direction_changed = true;
+
+  if( hall_right_speed_cntr != 0 ) 
+  return (int) hall_right_speed_cntr;
+}
+*/
+
 inline int hall_left_speed() {
   return hall_left_speed_cntr;
 }
@@ -413,7 +418,7 @@ void hall_sensors_test()
 #define W2 50
 #define W3 50
 #define W4 50
-byte weight_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+byte weight_tbl[] = {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
                        W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,
@@ -424,11 +429,10 @@ byte weight_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                        W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4 };
 
 workout_prf_t weight_prf = { "Weight", 0, 0, 4, 4, sizeof(weight_tbl), weight_tbl };
-//workout_prf_t weight_prf = { "Weight", 0, 4, 0, 0, sizeof(weight_tbl), weight_tbl };
 
 // ---------------------------------------------------------------------------------
 
-byte spring_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+byte spring_tbl[] = {   /*0,   0,   0,   0,   0,   0,   0,   0,   0,   0,*/
                         0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
                        10,  11,  12,  13,  14,  15,  16,  17,  18,  19,
                        20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
@@ -446,11 +450,10 @@ byte spring_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
 workout_prf_t spring_prf = { "Spring", 0, 0, 4, 4, sizeof(spring_tbl), spring_tbl };
-//workout_prf_t spring_prf = { "Spring", 0, 4, 0, 0, sizeof(spring_tbl), spring_tbl };
 
 // ---------------------------------------------------------------------------------
 
-byte inv_spring_tbl[] = {   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+byte inv_spring_tbl[] = {/*  0,  0,  0,  0,  0,  0,  0,  0,*/  0,  0,
                           149,148,147,146,145,144,143,142,141,140,
                           139,138,137,136,135,134,133,132,131,130,
                           129,128,127,126,125,124,123,122,121,120,
@@ -468,11 +471,10 @@ byte inv_spring_tbl[] = {   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
                           9,8,7,6,5,4,3,2,1,0 };
 
 workout_prf_t inv_spring_prf = { "Inv-Spring", 0, 0, 4, 4, sizeof(inv_spring_tbl), inv_spring_tbl };
-//workout_prf_t inv_spring_prf = { "Inv-Spring", 0, 4, 0, 0, sizeof(inv_spring_tbl), inv_spring_tbl };
 
 // ---------------------------------------------------------------------------------
 
-byte mtn_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+byte mtn_tbl[] = {  /* 0,   0,   0,   0,   0,   0,   0,   0,*/   0,   0,
                     50,  52,  54,  56,  58,  60,  62,  64,  66,  68,
                     70,  72,  74,  76,  78,  80,  82,  84,  86,  88,
                     90,  92,  94,  96,  98, 100, 102, 104, 106, 108,
@@ -483,11 +485,10 @@ byte mtn_tbl[] = {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                     68,  66,  64,  62,  60,  58,  56,  54,  52,  50 };
        
 workout_prf_t mtn_prf = { "Mountain", 0, 0, 4, 4, sizeof(mtn_tbl), mtn_tbl };
-//workout_prf_t mtn_prf = { "Mountain", 0, 4, 0, 0, sizeof(mtn_tbl), mtn_tbl };
 
 // ---------------------------------------------------------------------------------
 
-byte v_tbl[] =   {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+byte v_tbl[] =   {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
                    128, 126, 124, 122, 120, 118, 116, 114, 112, 110,
                    108, 106, 104, 102, 100,  98,  96,  94,  92,  90,
                     88,  86,  84,  82,  80,  78,  76,  74,  72,  70,
@@ -498,92 +499,143 @@ byte v_tbl[] =   {   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
                    110, 112, 114, 116, 118, 120, 122, 124, 126, 128 };
        
 workout_prf_t v_prf = { "V-Shape", 0, 0, 4, 4, sizeof(v_tbl), v_tbl };
-//workout_prf_t v_prf = { "V-Shape", 0, 4, 0, 0, sizeof(v_tbl), v_tbl };
 
 // ---------------------------------------------------------------------------------
 
-int speed_comp( int speed ) {
-  static int tbl[] = { -20, -10, 0, 10, 20 };
-  for( int i=0; i<sizeof(tbl); i++ ) {
-    
+#define DIRECTION_COMP 100
+
+inline int direction_comp_right( int comp ) {
+  static int direction_comp = 0;
+  if( comp > 0 ){
+    if( direction_comp < comp ) direction_comp++;
   }
+  else {
+    if( direction_comp > 0 ) direction_comp--;
+  }  
+  return direction_comp;
 }
+
+inline int direction_comp_left( int comp ) {
+  static int direction_comp = 0;
+  if( comp > 0 ){
+    if( direction_comp < comp ) direction_comp++;
+  }
+  else {
+    if( direction_comp > 0 ) direction_comp--;
+  }  
+  return direction_comp;
+}
+
+// ---------------------------------------------------------------------------------
 
 // Geometry
 #define TICKS_PER_ROTATION 89.0
 #define WHEEL_DIAMETER 12.5
-#define DIRECTION_COMP 100
 
 void workout( workout_prf_t* prf )
 {
+  //static int right_torque_prev = 0;
+  
   // Aply torqueBased based on distance the cabled is pulled. 
   while( cmd_continue() )
   {
     int right_ticks = hall_right_ticks();
     int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
     int right_distance = constrain( right_distance_raw, 0, (prf->len - 1) );
-    int right_torque = prf->tbl[ right_distance ]; // * prf->mult;
-    //if( right_torque != 0 ) right_torque += prf->adder;
+    int right_torque = prf->tbl[ right_distance ];
+    static direction_t right_direction = DIRECTION_PULL;
+    static int right_speed_prev = 0;
         
     int right_speed = hall_right_speed();
     if( right_speed > 0 ) {
+      right_direction = DIRECTION_PULL;
+    }
+    else if( right_speed < 0 ) {
+      right_direction = DIRECTION_REL;
+    }
+    else if( right_speed_prev > 0 ) {
+      right_direction = DIRECTION_REL;
+    }
+    else if( right_speed_prev < 0 ) {
+      right_direction = DIRECTION_PULL;
+    }
+    right_speed_prev = right_speed;
+    
+    if( right_direction == DIRECTION_PULL ) {
       right_torque *= prf->mult_pull;
       if( right_torque != 0 ) {
         right_torque += prf->add_pull;
-      }
-      right_torque -= right_speed;
-      right_torque -= hall_right_accel()/2;            
+        right_torque += direction_comp_right( 0 );
+      }              
     }
-    else if( right_speed < 0 ) {  
+    else {  
       right_torque *= prf->mult_rel;
       if( right_torque != 0 ) {
         right_torque += prf->add_rel;
-        right_torque += DIRECTION_COMP;
-      }
-      right_torque -= right_speed;
-      right_torque -= hall_right_accel()/2;      
+        right_torque += direction_comp_right( DIRECTION_COMP );        
+      }           
     }
-    else if( right_distance > 20 && right_torque < DIRECTION_COMP) {
-      right_torque += 2;  
-    }
+    right_torque -= right_speed;
+    right_torque -= hall_right_accel()/4; //2; 
     
-    if( right_distance <= 0 ) {
+    //if( right_speed <= 0 && right_distance > 20 && right_torque < DIRECTION_COMP) {
+    if( right_distance < 20 && right_torque < DIRECTION_COMP ) {
+      right_torque = DIRECTION_COMP; //+= 2;  
+    }
+        
+    if( right_distance <= -50 ) {
       right_torque = 0;
     }
     
     right_torque = max( right_torque, 0 );
-        
+            
     //--------------------------------------------------
 
     int left_ticks = hall_left_ticks();
     int left_distance_raw = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
     int left_distance = constrain( left_distance_raw, 0, (prf->len - 1) );
-    int left_torque = prf->tbl[ left_distance ]; // * prf->mult;
-    //if( left_torque != 0 ) left_torque += prf->adder;
-
+    int left_torque = prf->tbl[ left_distance ];
+    static direction_t left_direction = DIRECTION_PULL;
+    static int left_speed_prev = 0;
+        
     int left_speed = hall_left_speed();
     if( left_speed > 0 ) {
+      left_direction = DIRECTION_PULL;
+    }
+    else if( left_speed < 0 ) {
+      left_direction = DIRECTION_REL;
+    }
+    else if( left_speed_prev > 0 ) {
+      left_direction = DIRECTION_REL;
+    }
+    else if( left_speed_prev < 0 ) {
+      left_direction = DIRECTION_PULL;
+    }
+    left_speed_prev = left_speed;
+    
+    if( left_direction == DIRECTION_PULL ) {
       left_torque *= prf->mult_pull;
       if( left_torque != 0 ) {
         left_torque += prf->add_pull;
-      }
-      left_torque -= left_speed;
-      left_torque -= hall_left_accel()/2;            
+        left_torque += direction_comp_left( 0 );
+      }              
     }
-    else if( left_speed < 0 ) {  
+    else {  
       left_torque *= prf->mult_rel;
       if( left_torque != 0 ) {
         left_torque += prf->add_rel;
-        left_torque += DIRECTION_COMP;
-      }
-      left_torque -= left_speed;
-      left_torque -= hall_left_accel()/2;      
+        left_torque += direction_comp_left( DIRECTION_COMP );        
+      }           
     }
-    else if( left_distance > 20 && left_torque < DIRECTION_COMP) {
-      left_torque += 2;  
+    left_torque -= left_speed;
+    left_torque -= hall_left_accel()/4; //2; 
+    
+    //if( left_speed <= 0 && left_distance > 20 && left_torque < DIRECTION_COMP) {
+    if( left_distance < 20 && left_torque < DIRECTION_COMP ) {
+      left_torque = DIRECTION_COMP; //+= 2;  
     }
         
-    if( left_distance <= 0 ) {
+    if( left_distance <= -50 ) {
       left_torque = 0;
     }
     
