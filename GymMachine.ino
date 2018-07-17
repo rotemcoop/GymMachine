@@ -437,16 +437,16 @@ class Motors {
 
     // Continue to apply torque as long as motors are turning.
     do {
-      rightTicks = hall_right_ticks();
-      leftTicks = hall_left_ticks();
+      rightTicks = right.hall.ticks();
+      leftTicks = left.hall.ticks();
       Serial.printf("Windback torque=%d\n", torquePrm);
       for(int i=0; i<100; i++) {
         torqueSmooth( torquePrm );
-        hall_right_ticks();
-        hall_left_ticks();
+        right.hall.ticks();
+        left.hall.ticks();
       }
-    } while( rightTicks > hall_right_ticks() ||
-             leftTicks > hall_left_ticks() );
+    } while( rightTicks > right.hall.ticks() ||
+             leftTicks > left.hall.ticks() );
     torque( 0 );
   }
 };
@@ -686,35 +686,114 @@ inline int direction_comp_left( int comp ) {
 
 // ---------------------------------------------------------------------------------
 
-class cable {
-  
-};
-
-// ---------------------------------------------------------------------------------
 
 // Geometry
 #define TICKS_PER_ROTATION 89.0
 #define WHEEL_DIAMETER 12.5
 
-class Workout {
+class Cable {
   private:
-  Motors motors;
+  Motor* motor;
+  workout_prf_t* prf;
+  int ticks;
+  int distanceRaw;
+  int distance;
+  int torque;
+  direction_t direction;
+  int speed;
+  int speedPrev;
 
   public:
-  //Workout()
+  Cable( Motor* motorPrm, workout_prf_t* prfPrm ) :
+    motor( motorPrm ),
+    prf( prfPrm ),
+    ticks( 0 ),
+    distanceRaw( 0 ),
+    distance( 0 ),
+    torque( 0 ),
+    direction( DIRECTION_PULL ),
+    speed( 0 ),
+    speedPrev( 0 ) {
+  }
+  
+  void setPrf( workout_prf_t* prfPrm ) {
+    prf = prfPrm;  
+  }
 
-  void run( workout_prf_t* prf ) {
+  int dist() {
+    return distance;
+  }
+
+  int torq() {
+    return torque;
+  }
+  
+  void workout() {
+    direction = DIRECTION_PULL;
+    speedPrev = 0;
+    
     while( cmd_continue() )
     {
-      int rightTicks = motors.right.hall.ticks();
-      int rightSistanceRaw = (int) ((PI * WHEEL_DIAMETER * rightTicks) / TICKS_PER_ROTATION);
-      int rightDistance = constrain( rightSistanceRaw, 0, (prf->len - 1) );
-      int right_torque = prf->tbl[ rightDistance ];
-      static direction_t rightDirection = DIRECTION_PULL;
-      static int rightSpeedPrev = 0;
-    }
+      ticks = motor->hall.ticks();
+      distanceRaw = (int) ((PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION);
+      distance = constrain( distanceRaw, 0, (prf->len - 1) );
+      torque = prf->tbl[ distance ];
+      
+      int speed = motor->hall.speed();
+      if( speed > 0 ) {
+        direction = DIRECTION_PULL;
+      }
+      else if( speed < 0 ) {
+        direction = DIRECTION_REL;
+      }
+      else if( speedPrev > 0 ) {
+        direction = DIRECTION_REL;
+      }
+      else if( speedPrev < 0 ) {
+        direction = DIRECTION_PULL;
+      }
+      speedPrev = speed;
+    
+      if( direction == DIRECTION_PULL ) {
+        torque *= prf->mult_pull;
+        if( torque != 0 ) {
+          torque += prf->add_pull;
+          torque += direction_comp_right( 0 );
+        }              
+      }
+      else {  
+        torque *= prf->mult_rel;
+        if( torque != 0 ) {
+          torque += prf->add_rel;
+          torque += direction_comp_right( DIRECTION_COMP );        
+        }           
+      }
+      torque -= speed;
+      torque -= motor->hall.accel()/4; //2; 
+    
+      //if( right_speed <= 0 && right_distance > 20 && right_torque < DIRECTION_COMP) {
+      if( distance < 20 && torque < DIRECTION_COMP ) {
+        torque = DIRECTION_COMP; //+= 2;  
+      }
+        
+      if( distance <= -50 ) {
+        torque = 0;
+      }
+    
+      torque = max( torque, 0 );
+      motor->torqueSmooth( torque );
+    }    
   }
 };
+
+class GymMachine {
+  public:
+  Motors motors;
+//  Cable rightCable( &motors.right, &weight_prf );
+//  Cable leftCable( &motors.left, &weight_prf );
+};
+
+// ---------------------------------------------------------------------------------
 
 void workout( workout_prf_t* prf )
 {
@@ -845,94 +924,6 @@ void workout( workout_prf_t* prf )
     }
   }
 }
-
-/*
-void workout( workout_prf_t* prf )
-{
-  // Aply torqueBased based on distance the cabled is pulled. 
-  while( cmd_continue() )
-  {
-    int right_ticks = hall_right_ticks();
-    int right_distance_raw = (int) ((PI * WHEEL_DIAMETER * right_ticks) / TICKS_PER_ROTATION);
-    int right_distance = constrain( right_distance_raw, 0, (prf->len - 1) );
-    int right_torque = prf->tbl[ right_distance ] * prf->mult;
-    if( right_torque != 0 ) right_torque += prf->adder;
-        
-    int right_speed = hall_right_speed();
-    if( right_speed > 0 ) {
-      if( right_torque != 0 ) {
-        right_torque += prf->pull;
-      }
-      right_torque -= right_speed;
-      right_torque -= hall_right_accel()/2;            
-    }
-    else if( right_speed < 0 ) {  
-      if( right_torque != 0 ) {
-        right_torque += prf->rtrn;
-        right_torque += DIRECTION_COMP;
-      }
-      right_torque -= right_speed;
-      right_torque -= hall_right_accel()/2;      
-    }
-    else if( right_distance > 20 && right_torque < DIRECTION_COMP) {
-      right_torque += 2;  
-    }
-    
-    if( right_distance <= 0 ) {
-      right_torque = 0;
-    }
-    
-    right_torque = max( right_torque, 0 );
-        
-    //--------------------------------------------------
-
-    int left_ticks = hall_left_ticks();
-    int left_distance_raw = (int) ((PI * WHEEL_DIAMETER * left_ticks) / TICKS_PER_ROTATION);
-    int left_distance = constrain( left_distance_raw, 0, (prf->len - 1) );
-    int left_torque = prf->tbl[ left_distance ] * prf->mult;
-    if( left_torque != 0 ) left_torque += prf->adder;
-
-    int left_speed = hall_left_speed();
-    if( left_speed > 0 ) {
-      if( left_torque != 0 ) {
-        left_torque += prf->pull;
-      }
-      left_torque -= left_speed;
-      left_torque -= hall_left_accel()/2;            
-    }
-    else if( left_speed < 0 ) {
-      if( left_torque != 0 ) {
-        left_torque += prf->rtrn;
-        left_torque += DIRECTION_COMP;
-      }
-      left_torque -= left_speed;
-      left_torque -= hall_left_accel()/2;      
-    }
-    else if( left_distance > 20 && left_torque < DIRECTION_COMP) {
-      left_torque += 2;  
-    }
-        
-    if( left_distance <= 0 ) {
-      left_torque = 0;
-    }
-    
-    left_torque = max( left_torque, 0 );
-    
-    //--------------------------------------------------
-
-    motor_right_torque_smooth( right_torque );
-    motor_left_torque_smooth( left_torque );
-        
-    // Print out ticks, distance and torque.
-    
-    Serial.printf("prf=%s, add=%d, mult=%d, pull/rel=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
-                   prf->name, prf->adder, prf->mult, prf->pull, prf->rtrn, right_ticks, left_ticks, right_distance, left_distance, \
-                   right_speed, left_speed, hall_right_accel()/10, hall_left_accel()/10, right_torque, left_torque );
-                   
-    //Serial.printf( "speed=%d/%d, accel=%d/%d\n", right_speed, left_speed, hall_right_accel()/10, hall_left_accel()/10 );
-  }
-}
-*/
 
 // ---------------------------------------------------------------------------------
 
