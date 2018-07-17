@@ -787,10 +787,17 @@ class Cable {
 };
 
 class GymMachine {
+  private:
+   
   public:
   Motors motors;
-//  Cable rightCable( &motors.right, &weight_prf );
-//  Cable leftCable( &motors.left, &weight_prf );
+  Cable rightCable;
+  Cable leftCable;
+  
+  GymMachine() :
+    rightCable( &motors.right, &weight_prf ),
+    leftCable( &motors.left, &weight_prf ) {
+  }
 };
 
 // ---------------------------------------------------------------------------------
