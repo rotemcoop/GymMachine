@@ -87,120 +87,6 @@ void serial1_to_serial3_test( uint16_t value )
 }
 
 // ---------------------------------------------------------------------------------
-// ------------------------------------ Motor --------------------------------------
-// ---------------------------------------------------------------------------------
-
-inline void motor_right_torque( int16_t value ) {
-  serial_write_frame( &Serial3, -value );
-}
-
-inline void motor_left_torque( int16_t value ) {
-  serial_write_frame( &Serial1, -value );
-}
-
-inline void motor_both_torque( int16_t value ) {
-  serial_write_frame( &Serial3, -value );
-  serial_write_frame( &Serial1, -value );
-}
-
-// ---------------------------------------------------------------------------------
-
-void motor_right_torque_smooth( int16_t value ) {
-  static int16_t value_last = 0;
-  int diff = value - value_last;
-  if( diff > 0 ) {
-    value_last += 2;        
-  }
-  else if( diff < 0 ) {
-    value_last -= 2;     
-  }
-  motor_right_torque( value_last );
-}
-
-void motor_left_torque_smooth( int16_t value ) {
-  static int16_t value_last = 0;
-  int diff = value - value_last;
-  if( diff > 0 ) {
-    value_last += 2;        
-  }
-  else if( diff < 0 ) {
-    value_last -= 2;     
-  }
-  motor_left_torque( value_last );
-}
-
-inline void motor_both_torque_smooth( int16_t value ) {
-  motor_right_torque_smooth( value );
-  motor_left_torque_smooth( value );
-}
-
-// ---------------------------------------------------------------------------------
-
-void motor_wind_back( int torque )
-{
-  int right_ticks;
-  int left_ticks;
-
-  // Continue to apply torque as long as motors are turning.
-  do {
-    right_ticks = hall_right_ticks();
-    left_ticks = hall_left_ticks();
-    Serial.printf("Windback torque=%d\n", torque);
-    for(int i=0; i<100; i++) {
-      motor_both_torque_smooth( torque );
-      hall_right_ticks();
-      hall_left_ticks();
-    }
-  } while( right_ticks > hall_right_ticks() ||
-           left_ticks > hall_left_ticks() );
-  motor_both_torque( 0 );
-}
-
-//-------------------------------------------------------------------------
-
-void motor_up_down_test( int max )
-{
-  // Loop n times and in between write same value to UART1 multiple times
-  
-  int i=0;
-  const uint loop_cnt = 250;
-  const uint loop_delay = 0;
-  for(; i<max; i+=10)
-  //for(; i<max; i+=1 )
-  {
-    Serial.printf("UART1 Sending: %d\n", i);
-    Serial.println( "----------------------------" );
-    for(int j=0; j<loop_cnt; j++) {
-      delay(loop_delay);
-      motor_both_torque( i );
-      //hall_right_print();      
-    }    
-  }
-
-  for(; i> -max; i-=10)
-  {
-    Serial.printf("UART1 Sending: %d\n", i);
-    Serial.println( "----------------------------" );
-    for(int j=0; j<loop_cnt; j++) {
-      delay(loop_delay);
-      motor_both_torque( i );
-      //hall_right_print(); 
-    }    
-  }
-
-  for(; i<0; i+=10)
-  {
-    Serial.printf("UART1 Sending: %d\n", i);
-    Serial.println( "----------------------------" );
-    for(int j=0; j<loop_cnt; j++) {
-      delay(loop_delay);
-      motor_both_torque( i );
-      //hall_right_print();      
-    }    
-  }
-}
-
-// ---------------------------------------------------------------------------------
 // -------------------------------- Hall Sensors -----------------------------------
 // ---------------------------------------------------------------------------------
 
@@ -240,6 +126,98 @@ enum {
 
 #define HALL_INTERVAL 50 // in millisec
 
+class Hall {
+  private:
+  int h1Pin;
+  int h2Pin;
+  int h3Pin;
+  uint state;
+  uint statePrev;
+  uint badStateCntr;
+  int ticksCntr;
+  int speedCntr;
+  int accelCntr;
+  struct {
+    unsigned long time;
+    int ticks;
+    int speed;
+  } prev;  
+      
+  public:
+  Hall( int h1PinPrm, int h2PinPrm, int h3PinPrm ) :
+    h1Pin( h1PinPrm ),
+    h2Pin( h2PinPrm ),
+    h3Pin( h3PinPrm ) {
+      reset();
+      state = 0;
+      statePrev = 0;
+      prev.time = millis();
+      prev.ticks = 0;
+      prev.speed = 0;
+    }
+
+  void reset() {
+    badStateCntr = 0;
+    ticksCntr = 0;
+    speedCntr = 0;
+    accelCntr = 0;  
+  }
+
+  // Return hall sensor ticks since reset.
+  // This function has to be call frquent enugh to capture all hall sensor transitions.
+  // Blue wire -> h1Pin
+  // Green wire -> h2Pin
+  // Yellow wire -> h3Pin
+  //
+  inline int ticks() {
+    int h1 = digitalRead( h1Pin );
+    int h2 = digitalRead( h2Pin );
+    int h3 = digitalRead( h3Pin );
+    statePrev = state;
+    state = h1 << 2 | h2 << 1 | h3;
+
+    // Map hall sensors transition to rotation ticks (0, +1, -1)
+    // Detect invalid transitions.
+    int tick = hall_tbl[statePrev][state];
+    if( tick == NA ) {
+      badStateCntr++;
+      tick = 0;
+    }
+    ticksCntr += tick;
+
+    //--------------------------------------------------------------------------------
+
+    // Calculate ticks spped and acceleration
+    unsigned long timeCurr = millis();
+    if( timeCurr >= prev.time + HALL_INTERVAL ) {
+      speedCntr = (speedCntr + (int)((ticksCntr - prev.ticks) * (1000/HALL_INTERVAL)))/2;
+      accelCntr = (3*accelCntr + (int)((speedCntr - prev.speed) * (1000/HALL_INTERVAL)))/4;
+      prev.ticks = ticksCntr;
+      prev.speed = speedCntr;
+      prev.time = timeCurr;
+    }
+
+    return ticksCntr; 
+  }
+  
+  inline int speed() {
+    return speedCntr;
+  }
+
+  inline int accel() {
+    return accelCntr;
+  }
+
+  void print() {  
+    int h1 = digitalRead(h1Pin);
+    int h2 = digitalRead(h2Pin);
+    int h3 = digitalRead(h3Pin);
+    Serial.printf("Hall values: %d, %d, %d\n", h1, h2, h3);
+  }
+};
+
+// ---------------------------------------------------------------------------------
+
 static uint hall_right_bad_state_cntr = 0;
 static uint hall_left_bad_state_cntr = 0;
 static int hall_right_ticks_cntr = 0;
@@ -263,18 +241,6 @@ void hall_reset() {
 inline int hall_right_speed() {
   return (int) hall_right_speed_cntr;
 }
-
-/*
-inline int hall_right_speed_smooth() {
-  static int direction_changed_cntr = 10;
-  static int speed_prev = 1;
-  static bool direction_changed = flase;
-  if( hall_right_speed_cntr * speed_prev <= 0 ) direction_changed = true;
-
-  if( hall_right_speed_cntr != 0 ) 
-  return (int) hall_right_speed_cntr;
-}
-*/
 
 inline int hall_left_speed() {
   return hall_left_speed_cntr;
@@ -408,6 +374,198 @@ void hall_sensors_test()
 }
 
 // ---------------------------------------------------------------------------------
+// ------------------------------------ Motor --------------------------------------
+// ---------------------------------------------------------------------------------
+
+class Motor {
+  private:
+  HardwareSerial* serial;
+  int16_t valueLast;
+
+  public:
+  Hall hall;
+  Motor( HardwareSerial* serialPrm,
+         int hallH1Pin,
+         int hallH2Pin,
+         int hallH3Pin ) :
+    serial( serialPrm ),
+    valueLast( 0 ),
+    hall( hallH1Pin, hallH2Pin, hallH3Pin )
+    {}
+  
+  inline void torque( int16_t value ) {
+    serial_write_frame( serial, -value );
+  }
+
+  void torqueSmooth( int16_t value ) {
+    int diff = value - valueLast;
+    if( diff > 0 ) {
+     valueLast += 2;        
+    }
+    else if( diff < 0 ) {
+      valueLast -= 2;     
+    }
+    torque( valueLast );  
+  }
+};
+
+class Motors {
+  private:
+  
+  public:
+  Motor right;
+  Motor left;
+  Motors() :
+    right( &Serial3, 14, 15, 16 ), // Serial and Hall sensors pins for right motor
+    left( &Serial1, 18, 19, 20 ) // Serial and Hall sensors pins for left motor
+    {}
+
+  inline void torque( int16_t value ) {
+    right.torque( value );
+    left.torque( value );
+  }
+  
+  inline void torqueSmooth( int16_t value ) {
+    right.torqueSmooth( value );
+    left.torqueSmooth( value );
+  }
+  
+  void windBack( int torquePrm )
+  {
+    int rightTicks;
+    int leftTicks;
+
+    // Continue to apply torque as long as motors are turning.
+    do {
+      rightTicks = hall_right_ticks();
+      leftTicks = hall_left_ticks();
+      Serial.printf("Windback torque=%d\n", torquePrm);
+      for(int i=0; i<100; i++) {
+        torqueSmooth( torquePrm );
+        hall_right_ticks();
+        hall_left_ticks();
+      }
+    } while( rightTicks > hall_right_ticks() ||
+             leftTicks > hall_left_ticks() );
+    torque( 0 );
+  }
+};
+
+//---------------
+
+inline void motor_right_torque( int16_t value ) {
+  serial_write_frame( &Serial3, -value );
+}
+
+inline void motor_left_torque( int16_t value ) {
+  serial_write_frame( &Serial1, -value );
+}
+
+inline void motor_both_torque( int16_t value ) {
+  serial_write_frame( &Serial3, -value );
+  serial_write_frame( &Serial1, -value );
+}
+
+// ---------------------------------------------------------------------------------
+
+void motor_right_torque_smooth( int16_t value ) {
+  static int16_t value_last = 0;
+  int diff = value - value_last;
+  if( diff > 0 ) {
+    value_last += 2;        
+  }
+  else if( diff < 0 ) {
+    value_last -= 2;     
+  }
+  motor_right_torque( value_last );
+}
+
+void motor_left_torque_smooth( int16_t value ) {
+  static int16_t value_last = 0;
+  int diff = value - value_last;
+  if( diff > 0 ) {
+    value_last += 2;        
+  }
+  else if( diff < 0 ) {
+    value_last -= 2;     
+  }
+  motor_left_torque( value_last );
+}
+
+inline void motor_both_torque_smooth( int16_t value ) {
+  motor_right_torque_smooth( value );
+  motor_left_torque_smooth( value );
+}
+
+// ---------------------------------------------------------------------------------
+
+void motor_wind_back( int torque )
+{
+  int right_ticks;
+  int left_ticks;
+
+  // Continue to apply torque as long as motors are turning.
+  do {
+    right_ticks = hall_right_ticks();
+    left_ticks = hall_left_ticks();
+    Serial.printf("Windback torque=%d\n", torque);
+    for(int i=0; i<100; i++) {
+      motor_both_torque_smooth( torque );
+      hall_right_ticks();
+      hall_left_ticks();
+    }
+  } while( right_ticks > hall_right_ticks() ||
+           left_ticks > hall_left_ticks() );
+  motor_both_torque( 0 );
+}
+
+//-------------------------------------------------------------------------
+
+void motor_up_down_test( int max )
+{
+  // Loop n times and in between write same value to UART1 multiple times
+  
+  int i=0;
+  const uint loop_cnt = 250;
+  const uint loop_delay = 0;
+  for(; i<max; i+=10)
+  //for(; i<max; i+=1 )
+  {
+    Serial.printf("UART1 Sending: %d\n", i);
+    Serial.println( "----------------------------" );
+    for(int j=0; j<loop_cnt; j++) {
+      delay(loop_delay);
+      motor_both_torque( i );
+      //hall_right_print();      
+    }    
+  }
+
+  for(; i> -max; i-=10)
+  {
+    Serial.printf("UART1 Sending: %d\n", i);
+    Serial.println( "----------------------------" );
+    for(int j=0; j<loop_cnt; j++) {
+      delay(loop_delay);
+      motor_both_torque( i );
+      //hall_right_print(); 
+    }    
+  }
+
+  for(; i<0; i+=10)
+  {
+    Serial.printf("UART1 Sending: %d\n", i);
+    Serial.println( "----------------------------" );
+    for(int j=0; j<loop_cnt; j++) {
+      delay(loop_delay);
+      motor_both_torque( i );
+      //hall_right_print();      
+    }    
+  }
+}
+
+
+
+// ---------------------------------------------------------------------------------
 // ---------------------------------- Workout --------------------------------------
 // ---------------------------------------------------------------------------------
 
@@ -528,9 +686,35 @@ inline int direction_comp_left( int comp ) {
 
 // ---------------------------------------------------------------------------------
 
+class cable {
+  
+};
+
+// ---------------------------------------------------------------------------------
+
 // Geometry
 #define TICKS_PER_ROTATION 89.0
 #define WHEEL_DIAMETER 12.5
+
+class Workout {
+  private:
+  Motors motors;
+
+  public:
+  //Workout()
+
+  void run( workout_prf_t* prf ) {
+    while( cmd_continue() )
+    {
+      int rightTicks = motors.right.hall.ticks();
+      int rightSistanceRaw = (int) ((PI * WHEEL_DIAMETER * rightTicks) / TICKS_PER_ROTATION);
+      int rightDistance = constrain( rightSistanceRaw, 0, (prf->len - 1) );
+      int right_torque = prf->tbl[ rightDistance ];
+      static direction_t rightDirection = DIRECTION_PULL;
+      static int rightSpeedPrev = 0;
+    }
+  }
+};
 
 void workout( workout_prf_t* prf )
 {
