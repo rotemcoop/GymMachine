@@ -397,126 +397,6 @@ void motorsUpDownTest( int max )
 }
 
 // ---------------------------------------------------------------------------------
-// ----------------------------------- Cable ---------------------------------------
-// ---------------------------------------------------------------------------------
-
-// Geometry
-#define TICKS_PER_ROTATION 89.0
-#define WHEEL_DIAMETER 12.5
-#define DIRECTION_COMP 100
-
-class Cable {
-  private:
-  Motor* motor;
-  workout_prf_t* prf;
-  int ticks;
-  int distanceRaw;
-  int distance;
-  int torque;
-  direction_t direction;
-  int speed;
-  int speedPrev;
-  int directionComp;
-
-  public:
-  Cable( Motor* motorPrm, workout_prf_t* prfPrm ) :
-    motor( motorPrm ),
-    prf( prfPrm ),
-    ticks( 0 ),
-    distanceRaw( 0 ),
-    distance( 0 ),
-    torque( 0 ),
-    direction( DIRECTION_PULL ),
-    speed( 0 ),
-    speedPrev( 0 ),
-    directionComp( 0 ) {
-  }
-
-  // ---------------------------------------------------------------------------------
-  
-  void setPrf( workout_prf_t* prfPrm ) {
-    prf = prfPrm;  
-  }
-
-  // ---------------------------------------------------------------------------------
-  
-  int dist() {
-    return distance;
-  }
-
-  int torq() {
-    return torque;
-  }
-
-  // ---------------------------------------------------------------------------------
-  
-  inline int dirComp( int comp ) {
-    if( comp > 0 ){
-      if( directionComp < comp ) directionComp++;
-    }
-    else {
-      if( directionComp > 0 ) directionComp--;
-    }  
-    return directionComp;
-  }
-  // ---------------------------------------------------------------------------------
-  
-  void workout() {
-    direction = DIRECTION_PULL;
-    speedPrev = 0;
-    
-    ticks = motor->hall.ticks();
-    distanceRaw = (int) ((PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION);
-    distance = constrain( distanceRaw, 0, (prf->len - 1) );
-    torque = prf->tbl[ distance ];
-      
-    int speed = motor->hall.speed();
-    if( speed > 0 ) {
-      direction = DIRECTION_PULL;
-    }
-    else if( speed < 0 ) {
-      direction = DIRECTION_REL;
-    }
-    else if( speedPrev > 0 ) {
-      direction = DIRECTION_REL;
-    }
-    else if( speedPrev < 0 ) {
-      direction = DIRECTION_PULL;
-    }
-    speedPrev = speed;
-    
-    if( direction == DIRECTION_PULL ) {
-      torque *= prf->mult_pull;
-      if( torque != 0 ) {
-        torque += prf->add_pull;
-        torque += dirComp( 0 );
-      }              
-    }
-    else {  
-      torque *= prf->mult_rel;
-      if( torque != 0 ) {
-        torque += prf->add_rel;
-        torque += dirComp( DIRECTION_COMP );        
-      }           
-    }
-    torque -= speed;
-    torque -= motor->hall.accel()/4; //2; 
-    
-    //if( right_speed <= 0 && right_distance > 20 && right_torque < DIRECTION_COMP) {
-    if( distance < 20 && torque < DIRECTION_COMP ) {
-      torque = DIRECTION_COMP; //+= 2;  
-    }
-        
-    if( distance <= -50 ) {
-      torque = 0;
-    }
-    
-    torque = max( torque, 0 );
-    motor->torqueSmooth( torque );
-  }
-};
-
-// ---------------------------------------------------------------------------------
 // ------------------------------ Workout Profiles ---------------------------------
 // ---------------------------------------------------------------------------------
 
@@ -610,6 +490,134 @@ byte v_tbl[] =   {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
 workout_prf_t v_prf = { "V-Shape", 0, 0, 4, 4, sizeof(v_tbl), v_tbl };
 
 // ---------------------------------------------------------------------------------
+// ----------------------------------- Cable ---------------------------------------
+// ---------------------------------------------------------------------------------
+
+// Geometry
+#define TICKS_PER_ROTATION 89.0
+#define WHEEL_DIAMETER 12.5
+#define DIRECTION_COMP 100
+
+class Cable {
+  private:
+  Motor* motor;
+  workout_prf_t* prf;
+  int ticks;
+  int distanceRaw;
+  int distance;
+  int torque;
+  direction_t direction;
+  int speed;
+  int speedPrev;
+  int directionComp;
+
+  public:
+  Cable( Motor* motorPrm, workout_prf_t* prfPrm ) :
+    motor( motorPrm ),
+    prf( prfPrm ),
+    ticks( 0 ),
+    distanceRaw( 0 ),
+    distance( 0 ),
+    torque( 0 ),
+    direction( DIRECTION_PULL ),
+    speed( 0 ),
+    speedPrev( 0 ),
+    directionComp( 0 ) {
+  }
+
+  // ---------------------------------------------------------------------------------
+
+  void setPrf( workout_prf_t* prfPrm ) {
+    prf = prfPrm;
+    direction = DIRECTION_PULL;
+    speedPrev = 0; 
+  }
+
+  // ---------------------------------------------------------------------------------
+  
+  int dist() {
+    return distance;
+  }
+
+  int torq() {
+    return torque;
+  }
+
+  direction_t dir() {
+    return direction;
+  }
+
+  // ---------------------------------------------------------------------------------
+  
+  inline int dirComp( int comp ) {
+    if( comp > 0 ){
+      if( directionComp < comp ) directionComp++;
+    }
+    else {
+      if( directionComp > 0 ) directionComp--;
+    }  
+    return directionComp;
+  }
+  // ---------------------------------------------------------------------------------
+  
+  void workout() {
+    direction = DIRECTION_PULL;
+    //speedPrev = 0;
+    
+    ticks = motor->hall.ticks();
+    distanceRaw = (int) ((PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION);
+    distance = constrain( distanceRaw, 0, (prf->len - 1) );
+    torque = prf->tbl[ distance ];
+      
+    int speed = motor->hall.speed();
+    if( speed > 0 ) {
+      direction = DIRECTION_PULL;
+    }
+    else if( speed < 0 ) {
+      direction = DIRECTION_REL;
+    }
+    else if( speedPrev > 0 ) {
+      direction = DIRECTION_REL;
+    }
+    else if( speedPrev < 0 ) {
+      direction = DIRECTION_PULL;
+    }
+    speedPrev = speed;
+    
+    if( direction == DIRECTION_PULL ) {
+      torque *= prf->mult_pull;
+      if( torque != 0 ) {
+        torque += prf->add_pull;
+        torque += dirComp( 0 );
+      }              
+    }
+    else {  
+      torque *= prf->mult_rel;
+      if( torque != 0 ) {
+        torque += prf->add_rel;
+        torque += dirComp( DIRECTION_COMP );        
+      }           
+    }
+    torque -= speed;
+    torque -= motor->hall.accel()/4; //2; 
+    
+    //if( right_speed <= 0 && right_distance > 20 && right_torque < DIRECTION_COMP) {
+    if( distance < 20 && torque < DIRECTION_COMP ) {
+      torque = DIRECTION_COMP; //+= 2;  
+    }
+        
+    if( distance <= -50 ) {
+      torque = 0;
+    }
+    
+    torque = max( torque, 0 );
+    motor->torqueSmooth( torque );
+  }
+};
+
+
+
+// ---------------------------------------------------------------------------------
 // ---------------------------------- Machine --------------------------------------
 // ---------------------------------------------------------------------------------
 
@@ -650,10 +658,12 @@ class Machine {
         cnt++;
         
         // Print ticks, distance and torque.
-        Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
+
+        Serial.printf("direction=%d\n", rightCable.dir() );
+        /*Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
                      cnt++, prf->name, prf->add_pull, prf->add_rel, prf->mult_pull, prf->mult_rel, motors.right.hall.ticks(), motors.left.hall.ticks(),
                      rightCable.dist(), leftCable.dist(), motors.right.hall.speed(), motors.left.hall.speed(),
-                     motors.right.hall.accel()/10, motors.left.hall.accel()/10, rightCable.torq(), leftCable.torq() );
+                     motors.right.hall.accel()/10, motors.left.hall.accel()/10, rightCable.torq(), leftCable.torq() ); */
       }
     }
   }
