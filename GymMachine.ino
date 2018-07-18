@@ -169,7 +169,7 @@ class Hall {
   // Green wire -> h2Pin
   // Yellow wire -> h3Pin
   //
-  inline int ticks() {
+  int ticks() {
     int h1 = digitalRead( h1Pin );
     int h2 = digitalRead( h2Pin );
     int h3 = digitalRead( h3Pin );
@@ -407,6 +407,11 @@ class Motor {
     }
     torque( valueLast );  
   }
+
+  void service( int16_t value ) {
+    hall.ticks();
+    torqueSmooth( value );  
+  }  
 };
 
 class Motors {
@@ -420,6 +425,11 @@ class Motors {
     left( &Serial1, 18, 19, 20 ) // Serial and Hall sensors pins for left motor
     {}
 
+  inline void reset() {
+    right.hall.reset();
+    left.hall.reset();  
+  }
+  
   inline void torque( int16_t value ) {
     right.torque( value );
     left.torque( value );
@@ -428,6 +438,11 @@ class Motors {
   inline void torqueSmooth( int16_t value ) {
     right.torqueSmooth( value );
     left.torqueSmooth( value );
+  }
+
+  inline void service( int16_t value ) {
+    right.service( value );
+    left.service( value );
   }
   
   void windBack( int torquePrm )
@@ -566,7 +581,7 @@ void motor_up_down_test( int max )
 
 
 // ---------------------------------------------------------------------------------
-// ---------------------------------- Workout --------------------------------------
+// ------------------------------ Workout Profiles ---------------------------------
 // ---------------------------------------------------------------------------------
 
 // Workout profiles.
@@ -659,6 +674,8 @@ byte v_tbl[] =   {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
 workout_prf_t v_prf = { "V-Shape", 0, 0, 4, 4, sizeof(v_tbl), v_tbl };
 
 // ---------------------------------------------------------------------------------
+// ----------------------------------- Cable ---------------------------------------
+// ---------------------------------------------------------------------------------
 
 #define DIRECTION_COMP 100
 
@@ -732,71 +749,312 @@ class Cable {
     direction = DIRECTION_PULL;
     speedPrev = 0;
     
-    while( cmd_continue() )
-    {
-      ticks = motor->hall.ticks();
-      distanceRaw = (int) ((PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION);
-      distance = constrain( distanceRaw, 0, (prf->len - 1) );
-      torque = prf->tbl[ distance ];
+    ticks = motor->hall.ticks();
+    distanceRaw = (int) ((PI * WHEEL_DIAMETER * ticks) / TICKS_PER_ROTATION);
+    distance = constrain( distanceRaw, 0, (prf->len - 1) );
+    torque = prf->tbl[ distance ];
       
-      int speed = motor->hall.speed();
-      if( speed > 0 ) {
-        direction = DIRECTION_PULL;
-      }
-      else if( speed < 0 ) {
-        direction = DIRECTION_REL;
-      }
-      else if( speedPrev > 0 ) {
-        direction = DIRECTION_REL;
-      }
-      else if( speedPrev < 0 ) {
-        direction = DIRECTION_PULL;
-      }
-      speedPrev = speed;
+    int speed = motor->hall.speed();
+    if( speed > 0 ) {
+      direction = DIRECTION_PULL;
+    }
+    else if( speed < 0 ) {
+      direction = DIRECTION_REL;
+    }
+    else if( speedPrev > 0 ) {
+      direction = DIRECTION_REL;
+    }
+    else if( speedPrev < 0 ) {
+      direction = DIRECTION_PULL;
+    }
+    speedPrev = speed;
     
-      if( direction == DIRECTION_PULL ) {
-        torque *= prf->mult_pull;
-        if( torque != 0 ) {
-          torque += prf->add_pull;
-          torque += direction_comp_right( 0 );
-        }              
-      }
-      else {  
-        torque *= prf->mult_rel;
-        if( torque != 0 ) {
-          torque += prf->add_rel;
-          torque += direction_comp_right( DIRECTION_COMP );        
-        }           
-      }
-      torque -= speed;
-      torque -= motor->hall.accel()/4; //2; 
+    if( direction == DIRECTION_PULL ) {
+      torque *= prf->mult_pull;
+      if( torque != 0 ) {
+        torque += prf->add_pull;
+        torque += direction_comp_right( 0 );
+      }              
+    }
+    else {  
+      torque *= prf->mult_rel;
+      if( torque != 0 ) {
+        torque += prf->add_rel;
+        torque += direction_comp_right( DIRECTION_COMP );        
+      }           
+    }
+    torque -= speed;
+    torque -= motor->hall.accel()/4; //2; 
     
-      //if( right_speed <= 0 && right_distance > 20 && right_torque < DIRECTION_COMP) {
-      if( distance < 20 && torque < DIRECTION_COMP ) {
-        torque = DIRECTION_COMP; //+= 2;  
-      }
+    //if( right_speed <= 0 && right_distance > 20 && right_torque < DIRECTION_COMP) {
+    if( distance < 20 && torque < DIRECTION_COMP ) {
+      torque = DIRECTION_COMP; //+= 2;  
+    }
         
-      if( distance <= -50 ) {
-        torque = 0;
-      }
+    if( distance <= -50 ) {
+      torque = 0;
+    }
     
-      torque = max( torque, 0 );
-      motor->torqueSmooth( torque );
-    }    
+    torque = max( torque, 0 );
+    motor->torqueSmooth( torque );
   }
 };
 
-class GymMachine {
+// ---------------------------------------------------------------------------------
+// ---------------------------------- Machine --------------------------------------
+// ---------------------------------------------------------------------------------
+
+class Machine {
   private:
    
   public:
   Motors motors;
   Cable rightCable;
   Cable leftCable;
+
+  // ---------------------------------------------------------------------------------
   
-  GymMachine() :
+  Machine() :
     rightCable( &motors.right, &weight_prf ),
     leftCable( &motors.left, &weight_prf ) {
+  }
+
+  // ---------------------------------------------------------------------------------
+  
+  void workout( workout_prf_t* prf ) {
+    
+    rightCable.setPrf( prf );
+    leftCable.setPrf( prf );
+
+    int cnt= 0;
+    int printCnt = 0;
+    while( continueWorkout() )
+    {
+      rightCable.workout();
+      leftCable.workout();
+
+      if( ++printCnt > 12 ) //12
+      {
+        printCnt=0;
+        cnt++;
+        
+        // Print ticks, distance and torque.
+        Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
+                     cnt++, prf->name, prf->add_pull, prf->add_rel, prf->mult_pull, prf->mult_rel, motors.right.hall.ticks(), motors.left.hall.ticks(),
+                     rightCable.dist(), leftCable.dist(), motors.right.hall.speed(), motors.left.hall.speed(),
+                     motors.right.hall.accel()/10, motors.left.hall.accel()/10, rightCable.torq(), leftCable.torq() );
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------------
+
+  inline void serviceMotors() {
+    motors.service( 150 );      
+  }
+
+  // ---------------------------------------------------------------------------------
+
+  void waitForStart()
+  {
+    // Wait for cables pull.
+    while( motors.right.hall.ticks() == 0 && motors.left.hall.ticks() == 0 ) {
+      Serial.printf("Waiting for cables pull...\n");
+      motors.torque( 0 );  
+    }   
+  }
+
+  // ---------------------------------------------------------------------------------
+
+  bool continueWorkout()
+  {
+    if( Serial.available() ) {
+      if( Serial.peek() == '\n' || Serial.peek() == '\r') {
+        Serial.read();
+        return true;
+      }
+      return false;
+    }
+    return true;  
+  }
+
+  // ---------------------------------------------------------------------------------
+
+  void printCmd( char cmd )
+  {
+    for( int i=0; i<1000; i++ ) {
+      serviceMotors();
+      Serial.printf("received %c\n", cmd );  
+    }
+  }
+
+  // ---------------------------------------------------------------------------------
+
+  void prfAdjust( int* add, int* mult )
+  {
+    while( Serial.available() )
+    {
+      int val = Serial.read();
+      switch( val )
+      {
+        case '+':
+          *add += 10;
+          break;
+            
+        case '-':
+          *add -= 10;
+          break;
+
+        case '*':
+          *mult += 1;
+          break;
+      
+        case '/':
+          *mult = constrain( *mult-1, 1, *mult );
+          break;
+
+        case '0':
+          *add = 0;
+          *mult = 4;
+          break;
+      }   
+    }        
+  }
+
+  // ---------------------------------------------------------------------------------
+
+
+
+  void strengthTest()
+  {
+    static const int convTbl[][2] = { {225, 30}, {300, 35}, {350, 40}, {400, 45}, {450, 50}, {500, 55}, {600, 60}, {750, 65}, {0, 0} };
+    motors.windBack( 150 );
+    motors.reset();
+
+    while( continueWorkout() && motors.right.hall.ticks() < 50 ) {
+      motors.service( 0 );
+      Serial.printf("Waiting for cable pull...\n" );
+    }
+
+    while( continueWorkout() && motors.right.hall.speed() > 0 ) {
+      motors.service( 50 );
+      Serial.printf("Stop pulling for strenght test start...\n" );
+    }
+
+    int ticks = motors.right.hall.ticks();
+    int torque = 150;
+    int torqueMax = torque;
+    while( continueWorkout() && motors.right.hall.ticks() > 50 && ticks > 50 &&
+         (motors.right.hall.ticks() + 50) > ticks )
+    {
+      for(int i=0; i<100; i++) {
+        motors.right.hall.ticks();
+        motors.left.hall.ticks();
+        motors.right.torque( torque );
+        motors.left.torque( 150 );
+        Serial.printf("Strength test torque=%d\n", torque );
+      }
+      torqueMax = max( torqueMax, torque );
+      torque += 10;
+    }
+
+    int poundMax = convTbl[0][1];
+    for(int i=0; convTbl[i][0] > 0; i++) {
+      if( convTbl[i][0] > torqueMax ) {
+        break;
+      }
+      poundMax = convTbl[i][1];
+    }
+  
+    while( continueWorkout() ) {
+      motors.torque( 150 );
+      Serial.printf("Strength test done, max torque/pound=%d/%d lb\n", torqueMax, poundMax );
+    }
+  }
+
+  // ---------------------------------------------------------------------------------
+
+  void main()
+  {
+    workout_prf_t* workoutPrf = &weight_prf;
+    while(1)
+    {
+      if( !Serial.available() ) {
+        motors.windBack( 150 );
+        motors.reset();
+        workout( workoutPrf );
+      }
+      
+      int input = Serial.read();
+      //printCmd( input );
+      switch( input )
+      {
+        case '\n':
+        case '\r':
+          break;
+      
+        case 'w':
+          workoutPrf = &weight_prf;
+          break;
+
+        case 's':
+          workoutPrf = &spring_prf;
+          break;
+
+        case 'i':
+          workoutPrf = &inv_spring_prf;
+          break;
+        
+        case 'm':
+          workoutPrf = &mtn_prf;
+          break;
+      
+        case 'v':
+          workoutPrf = &v_prf;
+          break;
+        
+        case 't':
+          workout_test_strength();
+          break;
+      
+        case '+':
+          workoutPrf->add_pull += 10;
+          workoutPrf->add_rel += 10;
+          break;
+
+        case '-':
+          workoutPrf->add_pull -= 10;
+          workoutPrf->add_rel -= 10;
+          break;  
+      
+        case '*':
+          workoutPrf->mult_pull += 1;
+          workoutPrf->mult_rel += 1;
+          break;
+
+        case '/':
+          workoutPrf->mult_pull = constrain( workoutPrf->mult_pull-1, 1, workoutPrf->mult_pull );
+          workoutPrf->mult_rel = constrain( workoutPrf->mult_rel-1, 1, workoutPrf->mult_rel );
+          break;
+      
+        case 'p':
+          prfAdjust( &workoutPrf->add_pull, &workoutPrf->mult_pull );
+          break;
+            
+        case 'r':
+            prfAdjust( &workoutPrf->add_rel, &workoutPrf->mult_rel );
+            break;
+
+        case '0':
+          workoutPrf->add_pull = workoutPrf->add_rel = 0;
+          workoutPrf->mult_pull = workoutPrf->mult_rel = 4;
+          break;
+        
+        default:
+          Serial.printf("received invalid input\n");
+          break;
+      }    
+    }
   }
 };
 
@@ -1200,10 +1458,14 @@ void setup() {
 
 //---------------------------------------------------------------------------
 
+Machine machine;
+
 void loop()
 {
   cmd_wait_for_start();
-  cmd_main();
+  //cmd_main();
+  machine.main();
+  
   //motor_up_down_test( 200 );
   //hall_sensors_test();
     
