@@ -404,18 +404,15 @@ void motorsUpDownTest( int max )
 // Specifies 8 bits resistance value for each cable pull distance in cm.
 
 #define W1 50
-#define W2 50
-#define W3 50
-#define W4 50
 byte weight_tbl[] = {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
-                       W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,
-                       W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,  W2,
-                       W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,
-                       W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,  W3,
-                       W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,
-                       W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4,  W4 };
+                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
+                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
+                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
+                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
+                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
+                       W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1 };
 
 workout_prf_t weight_prf = { "Weight", 0, 0, 4, 4, sizeof(weight_tbl), weight_tbl };
 
@@ -602,7 +599,7 @@ class Cable {
     torque -= motor->hall.accel()/4; //2; 
     
     //if( right_speed <= 0 && right_distance > 20 && right_torque < DIRECTION_COMP) {
-    if( distance < 20 && torque < DIRECTION_COMP ) {
+    if( distance < 3 && torque < DIRECTION_COMP ) {
       torque = DIRECTION_COMP; //+= 2;  
     }
         
@@ -614,8 +611,6 @@ class Cable {
     motor->torqueSmooth( torque );
   }
 };
-
-
 
 // ---------------------------------------------------------------------------------
 // ---------------------------------- Machine --------------------------------------
@@ -659,11 +654,11 @@ class Machine {
         
         // Print ticks, distance and torque.
 
-        Serial.printf("direction=%d\n", rightCable.dir() );
-        /*Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
+        //Serial.printf("direction=%d\n", rightCable.dir() );
+        Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
                      cnt++, prf->name, prf->add_pull, prf->add_rel, prf->mult_pull, prf->mult_rel, motors.right.hall.ticks(), motors.left.hall.ticks(),
                      rightCable.dist(), leftCable.dist(), motors.right.hall.speed(), motors.left.hall.speed(),
-                     motors.right.hall.accel()/10, motors.left.hall.accel()/10, rightCable.torq(), leftCable.torq() ); */
+                     motors.right.hall.accel()/10, motors.left.hall.accel()/10, rightCable.torq(), leftCable.torq() );
       }
     }
   }
