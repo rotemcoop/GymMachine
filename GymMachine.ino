@@ -728,13 +728,13 @@ class Machine {
     while( continueWorkout() && motors.right.hall.ticks() > 50 && ticks > 50 &&
          (motors.right.hall.ticks() + 50) > ticks )
     {
+      Serial.printf("Strength test torque=%d\n", torque );
       for(int i=0; i<100; i++) {
         motors.right.hall.ticks();
         motors.left.hall.ticks();
         motors.right.torque( torque );
-        motors.left.torque( 150 );
-        Serial.printf("Strength test torque=%d\n", torque );
-      }
+        motors.left.torque( 150 );        
+      }      
       torqueMax = max( torqueMax, torque );
       torque += 10;
     }
