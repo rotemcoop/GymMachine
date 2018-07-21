@@ -711,29 +711,41 @@ class Machine {
     static const int convTbl[][2] = { {225, 30}, {300, 35}, {350, 40}, {400, 45}, {450, 50}, {500, 55}, {600, 60}, {750, 65}, {0, 0} };
     motors.windBack( 150 );
     motors.reset();
+    Motor* motor = &motors.right;
+    Motor* motorOther = &motors.left;
 
-    while( continueWorkout() && motors.right.hall.ticks() < 50 ) {
+    while( continueWorkout() ) {
       motors.service( 0 );
       Serial.printf("Waiting for cable pull...\n" );
-    }
-
-    while( continueWorkout() && motors.right.hall.speed() > 0 ) {
+      if( motors.right.hall.ticks() > 50 ) {
+        motor = &motors.right;
+        motorOther = &motors.left;
+        break;        
+      }
+      else if( motors.left.hall.ticks() > 50 ) {
+        motor = &motors.left;
+        motorOther = &motors.right;
+        break;        
+      }
+    }    
+    
+    while( continueWorkout() && motor->hall.speed() > 0 ) {
       motors.service( 50 );
       Serial.printf("Stop pulling for strenght test start...\n" );
     }
 
-    int ticks = motors.right.hall.ticks();
+    int ticks = motor->hall.ticks();
     int torque = 150;
     int torqueMax = torque;
-    while( continueWorkout() && motors.right.hall.ticks() > 50 && ticks > 50 &&
-         (motors.right.hall.ticks() + 50) > ticks )
+    while( continueWorkout() && motor->hall.ticks() > 50 && ticks > 50 &&
+         (motor->hall.ticks() + 50) > ticks )
     {
       Serial.printf("Strength test torque=%d\n", torque );
       for(int i=0; i<100; i++) {
-        motors.right.hall.ticks();
-        motors.left.hall.ticks();
-        motors.right.torque( torque );
-        motors.left.torque( 150 );        
+        motor->hall.ticks();
+        motorOther->hall.ticks();
+        motor->torqueSmooth( torque );
+        motorOther->torqueSmooth( 150 );        
       }      
       torqueMax = max( torqueMax, torque );
       torque += 10;
@@ -748,8 +760,13 @@ class Machine {
     }
   
     while( continueWorkout() ) {
-      motors.torque( 150 );
-      Serial.printf("Strength test done, max torque/pound=%d/%d lb\n", torqueMax, poundMax );
+      Serial.printf("Strength test done, max torque=%d, lb=%d\n", torqueMax, poundMax );
+      for(int i=0; i<100; i++) {
+        motor->hall.ticks();
+        motorOther->hall.ticks();
+        motors.torque( 150 );
+      }      
+      //delay( 200 );
     }
   }
   
