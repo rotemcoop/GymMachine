@@ -536,6 +536,10 @@ class Cable {
     return distance;
   }
 
+  int distRaw() {
+    return distanceRaw;
+  }
+
   int torq() {
     return torque;
   }
@@ -657,7 +661,7 @@ class Machine {
         //Serial.printf("direction=%d\n", rightCable.dir() );
         Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
                      cnt++, prf->name, prf->add_pull, prf->add_rel, prf->mult_pull, prf->mult_rel, motors.right.hall.ticks(), motors.left.hall.ticks(),
-                     rightCable.dist(), leftCable.dist(), motors.right.hall.speed(), motors.left.hall.speed(),
+                     rightCable.distRaw(), leftCable.distRaw(), motors.right.hall.speed(), motors.left.hall.speed(),
                      motors.right.hall.accel()/10, motors.left.hall.accel()/10, rightCable.torq(), leftCable.torq() );
       }
     }
