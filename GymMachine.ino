@@ -684,37 +684,7 @@ class Machine {
     }   
   }
 
-  // ---------------------------------------------------------------------------------
-
-  bool continueWorkout()
-  {
-    if( !Serial.available() ) {
-      return true;
-    }
-
-    switch( Serial.peek() ) {
-      case '\n':
-      case '\r':
-        Serial.read();
-        return true;
-
-      case 'p':
-        Serial.read();
-        prfAdjust( &prf->add_pull, &prf->mult_pull );
-        return true;
-            
-      case 'r':
-        Serial.read();
-        prfAdjust( &prf->add_rel, &prf->mult_rel );
-        return true;
-      
-      default:
-        return false;
-    }
-    return false;  
-  }
-
-  // ---------------------------------------------------------------------------------
+   // ---------------------------------------------------------------------------------
 
   void printCmd( char cmd )
   {
@@ -792,17 +762,41 @@ class Machine {
   
   // ---------------------------------------------------------------------------------
 
-  void prfAdjust( int* add, int* mult )
+  bool continueWorkout()
   {
+    if( !Serial.available() ) {
+      return true;
+    }
+
+    switch( Serial.peek() ) {
+      case '\n':
+      case '\r':
+        Serial.read();
+        return true;
+
+      case 'p':
+        Serial.read();
+        prfAdjust( &prf->add_pull, &prf->mult_pull );
+        return true;
+            
+      case 'r':
+        Serial.read();
+        prfAdjust( &prf->add_rel, &prf->mult_rel );
+        return true;
+      
+      default:
+        return false;
+    }
+    return false;  
+  }
+
+  // ---------------------------------------------------------------------------------
+
+  void prfAdjust( int* add, int* mult )
+  { 
     while( Serial.available() )
     {
-      int val = Serial.peek();
-      if( val == 'p' || val == 'r' ) {
-        return;
-      }
-
-      val = Serial.read();
-      switch( val )
+      switch( Serial.peek() )
       {
         case '+':
           *add += 10;
@@ -824,20 +818,25 @@ class Machine {
           *add = 0;
           *mult = 4;
           break;
-      }   
-    }        
+        
+        default:
+          // Unexpected input, return
+          return;
+      }
+
+      // Consume input
+      Serial.read();
+    }     
   }
   
   // ---------------------------------------------------------------------------------
 
   void main()
   {
-    //workout_prf_t* prf = &weight_prf;
-    
-    waitForStart();
+    //waitForStart();
     while(1)
     {
-      if( !Serial.available() ) {
+      while( !Serial.available() ) {
         motors.windBack( 150 );
         motors.reset();
         workout( prf );
@@ -900,8 +899,8 @@ class Machine {
           break;
             
         case 'r':
-            prfAdjust( &prf->add_rel, &prf->mult_rel );
-            break;
+          prfAdjust( &prf->add_rel, &prf->mult_rel );
+          break;
 
         case '0':
           prf->add_pull = prf->add_rel = 0;
