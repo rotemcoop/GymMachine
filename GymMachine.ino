@@ -678,7 +678,7 @@ class Machine {
   void waitForStart()
   {
     // Wait for cables pull.
-    while( motors.right.hall.ticks() == 0 && motors.left.hall.ticks() == 0 ) {
+    while( continueWorkout() && motors.right.hall.ticks() == 0 && motors.left.hall.ticks() == 0 ) {
       Serial.printf("Waiting for cables pull...\n");
       motors.torque( 0 );  
     }   
@@ -833,7 +833,7 @@ class Machine {
 
   void main()
   {
-    //waitForStart();
+    waitForStart();
     while(1)
     {
       while( !Serial.available() ) {
