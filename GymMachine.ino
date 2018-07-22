@@ -688,14 +688,30 @@ class Machine {
 
   bool continueWorkout()
   {
-    if( Serial.available() ) {
-      if( Serial.peek() == '\n' || Serial.peek() == '\r') {
+    if( !Serial.available() ) {
+      return true;
+    }
+
+    switch( Serial.peek() ) {
+      case '\n':
+      case '\r':
         Serial.read();
         return true;
-      }
-      return false;
+
+      case 'p':
+        Serial.read();
+        prfAdjust( &prf->add_pull, &prf->mult_pull );
+        return true;
+            
+      case 'r':
+        Serial.read();
+        prfAdjust( &prf->add_rel, &prf->mult_rel );
+        return true;
+      
+      default:
+        return false;
     }
-    return true;  
+    return false;  
   }
 
   // ---------------------------------------------------------------------------------
@@ -780,7 +796,12 @@ class Machine {
   {
     while( Serial.available() )
     {
-      int val = Serial.read();
+      int val = Serial.peek();
+      if( val == 'p' || val == 'r' ) {
+        return;
+      }
+
+      val = Serial.read();
       switch( val )
       {
         case '+':
