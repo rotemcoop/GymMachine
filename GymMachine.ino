@@ -40,7 +40,7 @@ typedef struct {
 } workout_prf_t;
 */
 
-class workout_prf_t {
+class WorkoutPrf {
   private:
   const int addPullInit;
   const int addRelInit;
@@ -55,7 +55,7 @@ class workout_prf_t {
   int addRel;
   int multPull;
   int multRel;
-  workout_prf_t( const char* const namePrm,
+  WorkoutPrf( const char* const namePrm,
                  int addPullInitPrm,
                  int addRelInitPrm,
                  int multPullInitPrm,
@@ -82,7 +82,7 @@ class workout_prf_t {
 };
 
 /*
-void workout_pref_init( workout_prf_t *prf ) {
+void workout_pref_init( WorkoutPrf *prf ) {
   prf->add_pull = prf->add_pull_init;
   prf->add_rel = prf->add_rel_init;
   prf->mult_pull = prf->mult_pull_init;
@@ -471,8 +471,8 @@ byte weight_tbl[] = {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1 };
 
-//workout_prf_t weight_prf = { "Weight", 0,0, 0,0, 4,4, 4,4, sizeof(weight_tbl), weight_tbl };
-workout_prf_t weight_prf( "Weight", 0, 0, 4, 4, sizeof(weight_tbl), weight_tbl );
+//WorkoutPrf weight_prf = { "Weight", 0,0, 0,0, 4,4, 4,4, sizeof(weight_tbl), weight_tbl };
+WorkoutPrf weight_prf( "Weight", 0, 0, 4, 4, sizeof(weight_tbl), weight_tbl );
 
 // ---------------------------------------------------------------------------------
 
@@ -493,7 +493,7 @@ byte spring_tbl[] = {   /*0,   0,   0,   0,   0,   0,   0,   0,   0,   0,*/
                       130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
-workout_prf_t spring_prf( "Spring", 0, 0, 4, 4, sizeof(spring_tbl), spring_tbl );
+WorkoutPrf spring_prf( "Spring", 0, 0, 4, 4, sizeof(spring_tbl), spring_tbl );
 
 // ---------------------------------------------------------------------------------
 
@@ -512,7 +512,7 @@ byte inv_spring_tbl[] = {/*  0,  0,  0,  0,  0,  0,  0,  0,*/  0,  0,
                           39,38,37,36,35,34,33,32,31,30,
                           29,28,27,26,25,24,23,22,21,20 };
 
-workout_prf_t inv_spring_prf( "Inv-Spring", 0, 0, 2, 2, sizeof(inv_spring_tbl), inv_spring_tbl );
+WorkoutPrf inv_spring_prf( "Inv-Spring", 0, 0, 2, 2, sizeof(inv_spring_tbl), inv_spring_tbl );
 
 // ---------------------------------------------------------------------------------
 
@@ -526,7 +526,7 @@ byte mtn_tbl[] = {  /* 0,   0,   0,   0,   0,   0,   0,   0,*/   0,   0,
                     88,  86,  84,  82,  80,  78,  76,  74,  72,  70,
                     68,  66,  64,  62,  60,  58,  56,  54,  52,  50 };
        
-workout_prf_t mtn_prf( "Mountain", 0, 0, 4, 4, sizeof(mtn_tbl), mtn_tbl );
+WorkoutPrf mtn_prf( "Mountain", 0, 0, 4, 4, sizeof(mtn_tbl), mtn_tbl );
 
 // ---------------------------------------------------------------------------------
 
@@ -540,7 +540,7 @@ byte v_tbl[] =   {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
                     90,  92,  94,  96,  98, 100, 102, 104, 106, 108,
                    110, 112, 114, 116, 118, 120, 122, 124, 126, 128 };
        
-workout_prf_t v_prf( "V-Shape", 0, 0, 4, 4, sizeof(v_tbl), v_tbl );
+WorkoutPrf v_prf( "V-Shape", 0, 0, 4, 4, sizeof(v_tbl), v_tbl );
 
 // ---------------------------------------------------------------------------------
 // ----------------------------------- Cable ---------------------------------------
@@ -554,7 +554,7 @@ workout_prf_t v_prf( "V-Shape", 0, 0, 4, 4, sizeof(v_tbl), v_tbl );
 class Cable {
   private:
   Motor* motor;
-  workout_prf_t* prf;
+  WorkoutPrf* prf;
   int ticks;
   int distanceRaw;
   int distance;
@@ -565,7 +565,7 @@ class Cable {
   int directionComp;
 
   public:
-  Cable( Motor* motorPrm, workout_prf_t* prfPrm ) :
+  Cable( Motor* motorPrm, WorkoutPrf* prfPrm ) :
     motor( motorPrm ),
     prf( prfPrm ),
     ticks( 0 ),
@@ -580,7 +580,7 @@ class Cable {
 
   // ---------------------------------------------------------------------------------
 
-  void setPrf( workout_prf_t* prfPrm ) {
+  void setPrf( WorkoutPrf* prfPrm ) {
     prf = prfPrm;
     direction = DIRECTION_PULL;
     speedPrev = 0; 
@@ -680,7 +680,7 @@ class Cable {
 class Machine {
   private:
   Motors motors;
-  workout_prf_t* prf;
+  WorkoutPrf* prf;
   Cable rightCable;
   Cable leftCable;  
     
@@ -695,7 +695,7 @@ class Machine {
 
   // ---------------------------------------------------------------------------------
   
-  void workout( workout_prf_t* prfPrm ) {
+  void workout( WorkoutPrf* prfPrm ) {
     
     prf = prfPrm;
     rightCable.setPrf( prf );
@@ -830,7 +830,35 @@ class Machine {
       case '\r':
         Serial.read();
         return true;
+      
+      case '0':
+        Serial.read();
+        prf->reset();
+        return true;
+      
+      case '+':
+        Serial.read();
+        prf->addPull += 10;
+        prf->addRel += 10;
+        return true;
 
+      case '-':
+        prf->addPull -= 10;
+        prf->addRel -= 10;
+        return true;  
+      
+      case '*':
+        Serial.read();
+        prf->multPull += 1;
+        prf->multRel += 1;
+        return true;
+
+      case '/':
+        Serial.read();
+        prf->multPull = constrain( prf->multPull-1, 1, prf->multPull );
+        prf->multRel = constrain( prf->multRel-1, 1, prf->multRel );
+        return true;
+      
       case 'p':
         Serial.read();
         prfAdjust( &prf->addPull, &prf->multPull );
@@ -839,7 +867,7 @@ class Machine {
       case 'r':
         Serial.read();
         prfAdjust( &prf->addRel, &prf->multRel );
-        return true;
+        return true;      
       
       default:
         return false;
@@ -932,6 +960,10 @@ class Machine {
           strengthTest();
           break;
       
+        case '0':
+          prf->reset();
+          break;
+          
         case '+':
           prf->addPull += 10;
           prf->addRel += 10;
@@ -958,11 +990,7 @@ class Machine {
             
         case 'r':
           prfAdjust( &prf->addRel, &prf->multRel );
-          break;
-
-        case '0':
-          prf->reset();
-          break;
+          break;        
         
         default:
           Serial.printf("received invalid input\n");
