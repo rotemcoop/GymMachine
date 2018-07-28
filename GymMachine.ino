@@ -23,15 +23,72 @@ typedef enum {
   CMD_STOP
 } cmd_t;
 
+/*
 typedef struct {
-  char*   name;
-  int     add_pull;
-  int     add_rel;
-  int     mult_pull;
-  int     mult_rel;
-  uint    len;
-  byte*   tbl;
+  const char*   name;
+  const int     add_pull_init;
+  int           add_pull;
+  const int     add_rel_init;
+  int           add_rel;
+  const int     mult_pull_init;
+  int           mult_pull;
+  const int     mult_rel_init;
+  int           mult_rel;
+  const uint    len;
+  const byte* const tbl;
+  
 } workout_prf_t;
+*/
+
+class workout_prf_t {
+  private:
+  const int addPullInit;
+  const int addRelInit;
+  const int multPullInit;
+  const int multRelInit;   
+  
+  public:
+  const char* const name;
+  const uint len;
+  const byte* const tbl;
+  int addPull;
+  int addRel;
+  int multPull;
+  int multRel;
+  workout_prf_t( const char* const namePrm,
+                 int addPullInitPrm,
+                 int addRelInitPrm,
+                 int multPullInitPrm,
+                 int multRelInitPrm,
+                 uint lenPrm,
+                 const byte* const tblPrm ) :
+    name( namePrm ),
+    addPullInit( addPullInitPrm ),
+    addRelInit( addRelInitPrm ),
+    multPullInit( multPullInitPrm ),
+    multRelInit( multRelInitPrm ),
+    len( lenPrm ),
+    tbl( tblPrm )
+  {
+    reset();
+  }
+
+    void reset() {
+      addPull = addPullInit;
+      addRel = addRelInit;
+      multPull = multPullInit;
+      multRel = multRelInit;
+    }
+};
+
+/*
+void workout_pref_init( workout_prf_t *prf ) {
+  prf->add_pull = prf->add_pull_init;
+  prf->add_rel = prf->add_rel_init;
+  prf->mult_pull = prf->mult_pull_init;
+  prf->mult_rel = prf->mult_rel_init;
+}
+*/
 
 // ---------------------------------------------------------------------------------
 // ---------------------------- Serial Communication -------------------------------
@@ -414,7 +471,8 @@ byte weight_tbl[] = {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1 };
 
-workout_prf_t weight_prf = { "Weight", 0, 0, 4, 4, sizeof(weight_tbl), weight_tbl };
+//workout_prf_t weight_prf = { "Weight", 0,0, 0,0, 4,4, 4,4, sizeof(weight_tbl), weight_tbl };
+workout_prf_t weight_prf( "Weight", 0, 0, 4, 4, sizeof(weight_tbl), weight_tbl );
 
 // ---------------------------------------------------------------------------------
 
@@ -435,7 +493,7 @@ byte spring_tbl[] = {   /*0,   0,   0,   0,   0,   0,   0,   0,   0,   0,*/
                       130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
                       140, 141, 142, 143, 144, 145, 146, 147, 148, 149 };
 
-workout_prf_t spring_prf = { "Spring", 0, 0, 4, 4, sizeof(spring_tbl), spring_tbl };
+workout_prf_t spring_prf( "Spring", 0, 0, 4, 4, sizeof(spring_tbl), spring_tbl );
 
 // ---------------------------------------------------------------------------------
 
@@ -452,11 +510,9 @@ byte inv_spring_tbl[] = {/*  0,  0,  0,  0,  0,  0,  0,  0,*/  0,  0,
                           59,58,57,56,55,54,53,52,51,50,
                           49,48,47,46,45,44,43,42,41,40,
                           39,38,37,36,35,34,33,32,31,30,
-                          29,28,27,26,25,24,23,22,21,20,
-                          19,18,17,16,15,14,13,12,11,10,
-                          9,8,7,6,5,4,3,2,1,0 };
+                          29,28,27,26,25,24,23,22,21,20 };
 
-workout_prf_t inv_spring_prf = { "Inv-Spring", 0, 0, 4, 4, sizeof(inv_spring_tbl), inv_spring_tbl };
+workout_prf_t inv_spring_prf( "Inv-Spring", 0, 0, 2, 2, sizeof(inv_spring_tbl), inv_spring_tbl );
 
 // ---------------------------------------------------------------------------------
 
@@ -470,7 +526,7 @@ byte mtn_tbl[] = {  /* 0,   0,   0,   0,   0,   0,   0,   0,*/   0,   0,
                     88,  86,  84,  82,  80,  78,  76,  74,  72,  70,
                     68,  66,  64,  62,  60,  58,  56,  54,  52,  50 };
        
-workout_prf_t mtn_prf = { "Mountain", 0, 0, 4, 4, sizeof(mtn_tbl), mtn_tbl };
+workout_prf_t mtn_prf( "Mountain", 0, 0, 4, 4, sizeof(mtn_tbl), mtn_tbl );
 
 // ---------------------------------------------------------------------------------
 
@@ -484,7 +540,7 @@ byte v_tbl[] =   {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
                     90,  92,  94,  96,  98, 100, 102, 104, 106, 108,
                    110, 112, 114, 116, 118, 120, 122, 124, 126, 128 };
        
-workout_prf_t v_prf = { "V-Shape", 0, 0, 4, 4, sizeof(v_tbl), v_tbl };
+workout_prf_t v_prf( "V-Shape", 0, 0, 4, 4, sizeof(v_tbl), v_tbl );
 
 // ---------------------------------------------------------------------------------
 // ----------------------------------- Cable ---------------------------------------
@@ -586,25 +642,26 @@ class Cable {
     speedPrev = speed;
     
     if( direction == DIRECTION_PULL ) {
-      torque *= prf->mult_pull;
+      torque *= prf->multPull;
       if( torque != 0 ) {
-        torque += prf->add_pull;
+        torque += prf->addPull;
         torque += dirComp( 0 );
       }              
     }
     else {  
-      torque *= prf->mult_rel;
+      torque *= prf->multRel;
       if( torque != 0 ) {
-        torque += prf->add_rel;
+        torque += prf->addRel;
         torque += dirComp( DIRECTION_COMP );        
       }           
     }
     torque -= speed;
     torque -= motor->hall.accel()/4; //2; 
     
-    //if( right_speed <= 0 && right_distance > 20 && right_torque < DIRECTION_COMP) {
-    if( distance < 3 && torque < DIRECTION_COMP ) {
-      torque = DIRECTION_COMP; //+= 2;  
+    if( (distance < 3) || 
+        (distance > 30 && speed <= 0) )
+    {    
+      torque = max( torque, DIRECTION_COMP);  
     }
         
     if( distance <= -50 ) {
@@ -633,8 +690,8 @@ class Machine {
   Machine() :
     prf( &weight_prf ),
     rightCable( &motors.right, prf ),
-    leftCable( &motors.left, prf ) {
-  }
+    leftCable( &motors.left, prf )
+  {}
 
   // ---------------------------------------------------------------------------------
   
@@ -660,7 +717,7 @@ class Machine {
 
         //Serial.printf("direction=%d\n", rightCable.dir() );
         Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
-                     cnt++, prf->name, prf->add_pull, prf->add_rel, prf->mult_pull, prf->mult_rel, motors.right.hall.ticks(), motors.left.hall.ticks(),
+                     cnt++, prf->name, prf->addPull, prf->addRel, prf->multPull, prf->multRel, motors.right.hall.ticks(), motors.left.hall.ticks(),
                      rightCable.distRaw(), leftCable.distRaw(), motors.right.hall.speed(), motors.left.hall.speed(),
                      motors.right.hall.accel()/10, motors.left.hall.accel()/10, rightCable.torq(), leftCable.torq() );
       }
@@ -776,12 +833,12 @@ class Machine {
 
       case 'p':
         Serial.read();
-        prfAdjust( &prf->add_pull, &prf->mult_pull );
+        prfAdjust( &prf->addPull, &prf->multPull );
         return true;
             
       case 'r':
         Serial.read();
-        prfAdjust( &prf->add_rel, &prf->mult_rel );
+        prfAdjust( &prf->addRel, &prf->multRel );
         return true;
       
       default:
@@ -815,8 +872,9 @@ class Machine {
           break;
 
         case '0':
-          *add = 0;
-          *mult = 4;
+          prf->reset();
+          //*add = 0;
+          //*mult = 4;
           break;
         
         default:
@@ -875,36 +933,35 @@ class Machine {
           break;
       
         case '+':
-          prf->add_pull += 10;
-          prf->add_rel += 10;
+          prf->addPull += 10;
+          prf->addRel += 10;
           break;
 
         case '-':
-          prf->add_pull -= 10;
-          prf->add_rel -= 10;
+          prf->addPull -= 10;
+          prf->addRel -= 10;
           break;  
       
         case '*':
-          prf->mult_pull += 1;
-          prf->mult_rel += 1;
+          prf->multPull += 1;
+          prf->multRel += 1;
           break;
 
         case '/':
-          prf->mult_pull = constrain( prf->mult_pull-1, 1, prf->mult_pull );
-          prf->mult_rel = constrain( prf->mult_rel-1, 1, prf->mult_rel );
+          prf->multPull = constrain( prf->multPull-1, 1, prf->multPull );
+          prf->multRel = constrain( prf->multRel-1, 1, prf->multRel );
           break;
       
         case 'p':
-          prfAdjust( &prf->add_pull, &prf->mult_pull );
+          prfAdjust( &prf->addPull, &prf->multPull );
           break;
             
         case 'r':
-          prfAdjust( &prf->add_rel, &prf->mult_rel );
+          prfAdjust( &prf->addRel, &prf->multRel );
           break;
 
         case '0':
-          prf->add_pull = prf->add_rel = 0;
-          prf->mult_pull = prf->mult_rel = 4;
+          prf->reset();
           break;
         
         default:
