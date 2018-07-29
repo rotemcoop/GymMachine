@@ -471,7 +471,6 @@ byte weight_tbl[] = {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1 };
 
-//WorkoutPrf weight_prf = { "Weight", 0,0, 0,0, 4,4, 4,4, sizeof(weight_tbl), weight_tbl };
 WorkoutPrf weight_prf( "Weight", 0, 0, 4, 4, sizeof(weight_tbl), weight_tbl );
 
 // ---------------------------------------------------------------------------------
