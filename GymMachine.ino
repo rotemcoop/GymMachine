@@ -587,37 +587,44 @@ class Cable {
 
   // ---------------------------------------------------------------------------------
   
-  int dist() {
+  inline int dist() {
     return distance;
   }
 
-  int distRaw() {
+  inline int distRaw() {
     return distanceRaw;
   }
 
-  int torq() {
+  inline int torq() {
     return torque;
   }
 
-  direction_t dir() {
+  inline int torqMin() {
+    return DIRECTION_COMP;
+  }
+
+  inline direction_t dir() {
     return direction;
   }
 
   // ---------------------------------------------------------------------------------
   
   inline int dirComp( int comp ) {
+           
     if( comp > 0 ){
-      if( directionComp < comp ) directionComp++;
+      if( directionComp/2 < comp ) directionComp++;
     }
     else {
       if( directionComp > 0 ) directionComp--;
     }  
-    return directionComp;
+    return directionComp/2;
   }
+  
   // ---------------------------------------------------------------------------------
   
-  void workout() {
-    direction = DIRECTION_PULL;
+   int torqCompute() {
+    //rotemc direction = DIRECTION_PULL;
+    
     //speedPrev = 0;
     
     ticks = motor->hall.ticks();
@@ -632,12 +639,15 @@ class Cable {
     else if( speed < 0 ) {
       direction = DIRECTION_REL;
     }
+    /*
     else if( speedPrev > 0 ) {
       direction = DIRECTION_REL;
     }
     else if( speedPrev < 0 ) {
       direction = DIRECTION_PULL;
     }
+    */
+   
     speedPrev = speed;
     
     if( direction == DIRECTION_PULL ) {
@@ -655,7 +665,7 @@ class Cable {
       }           
     }
     torque -= speed;
-    torque -= motor->hall.accel()/4; //2; 
+    torque -= motor->hall.accel()/4; 
     
     if( (distance < 3) || 
         (distance > 30 && speed <= 0) )
@@ -668,8 +678,23 @@ class Cable {
     }
     
     torque = max( torque, 0 );
-    motor->torqueSmooth( torque );
+    return torque;
+    //motor->torqueSmooth( torque );
   }
+
+  // ---------------------------------------------------------------------------------
+
+  inline void torqApply( int torq ) {
+    torque = torq;
+    motor->torqueSmooth( torq );
+  }
+
+  // ---------------------------------------------------------------------------------
+  
+  inline void workout() {
+    torqCompute();
+    torqApply( torque );
+  }  
 };
 
 // ---------------------------------------------------------------------------------
@@ -704,9 +729,39 @@ class Machine {
     int printCnt = 0;
     while( continueWorkout() )
     {
+      //---------------- new ---------------------------------
+      
       rightCable.workout();
       leftCable.workout();
-
+      /*      
+      int rightTorq = rightCable.torqCompute();
+      int leftTorq = leftCable.torqCompute();
+      if( rightCable.distRaw() > 50 && leftCable.distRaw() > 50 )
+      {
+        if( rightCable.distRaw() > leftCable.distRaw()  ) {
+          //leftTorq = leftCable.torqMin();
+          if( leftCable.torq() > leftCable.torqMin()+50 ) {
+            rightTorq += 50;
+            leftTorq -=50;
+          }          
+        }
+        else if( leftCable.distRaw() > rightCable.distRaw() ) {
+          //rightTorq = rightCable.torqMin();
+          if( rightCable.torq() > rightCable.torqMin()+50 ) {
+            rightTorq -= 50;
+            leftTorq +=50;
+          }
+        }
+        else {
+          //rightTorq /= 2;
+          //leftTorq /= 2;
+        }
+      }
+      rightCable.torqApply( rightTorq );
+      leftCable.torqApply( leftTorq );
+*/
+      //---------------- new ---------------------------------
+      
       if( ++printCnt > 12 ) //12
       {
         printCnt=0;
@@ -1040,7 +1095,7 @@ void loop()
   machine.main();
   
   //motor_up_down_test( 200 );
-  //hall_sensors_test();
+  //hallSensorsTest();
     
   Serial.println( "----------------------------" );
 }
