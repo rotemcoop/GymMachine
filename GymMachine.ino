@@ -920,10 +920,6 @@ class Machine {
           break;
 
         case '0':
-          prev = Serial.read();
-          prf->reset();
-          break;
-        
         case '1':
         case '2':
         case '3':
