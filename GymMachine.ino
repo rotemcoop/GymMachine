@@ -869,8 +869,87 @@ class Machine {
       }      
       //delay( 200 );
     }
-  }
+  }  
+
+ // ---------------------------------------------------------------------------------
   
+  int getNum() {
+    int num=0;
+    while( Serial.available() )
+    {
+      char next = Serial.peek();
+      if( next >= '0' && next <= '9' ) {
+        num *= 10;
+        num += (next - '0');
+        Serial.read();
+      }
+      else {
+        return num; 
+      }
+    }
+    return num;
+  }
+
+  // ---------------------------------------------------------------------------------
+
+  void prfAdjust( int* add, int* mult )
+  { 
+    char prev = 0;
+    while( Serial.available() )
+    {
+      switch( Serial.peek() )
+      {
+        case '+':
+          prev = Serial.read();
+          *add += 10;          
+          break;
+            
+        case '-':
+          prev = Serial.read();
+          *add -= 10;
+          break;
+
+        case '*':
+          prev = Serial.read();
+          *mult += 1;
+          break;
+      
+        case '/':
+          prev = Serial.read();
+          *mult = constrain( *mult-1, 1, *mult );
+          break;
+
+        case '0':
+          prev = Serial.read();
+          prf->reset();
+          break;
+        
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+          if( prev == '+' || prev == '-' ) {
+            *add = getNum();
+          }
+          else if( prev == '*' || prev == '/' ) {
+            *mult = getNum();
+          }
+          else {
+            return; // To be handeled at outer loop
+          }
+          break;          
+        
+        default:
+          return; // To be handeled at outer loop
+      }      
+    }     
+  }
+
   // ---------------------------------------------------------------------------------
 
   bool continueWorkout()
@@ -929,82 +1008,6 @@ class Machine {
     return false;  
   }
 
-  // ---------------------------------------------------------------------------------
-
-  void prfAdjust( int* add, int* mult )
-  { 
-    char prev = 0;
-    while( Serial.available() )
-    {
-      switch( Serial.peek() )
-      {
-        case '+':
-          *add += 10;
-          break;
-            
-        case '-':
-          *add -= 10;
-          break;
-
-        case '*':
-          *mult += 1;
-          break;
-      
-        case '/':
-          *mult = constrain( *mult-1, 1, *mult );
-          break;
-
-        case '0':
-          prf->reset();
-          break;
-        
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
-        case '9':
-          if( prev == '+' || prev == '-' ) {
-            *add = getNum();
-          }
-          else if( prev == '*' || prev == '/' ) {
-            *mult = getNum();
-          }
-          break;          
-        
-        default:
-          // Unexpected input, return
-          return;
-      }
-
-      // Consume input
-      prev = Serial.read();
-    }     
-  }
-
-  // ---------------------------------------------------------------------------------
-  
-  int getNum() {
-    int num=0;
-    while( Serial.available() )
-    {
-      char next = Serial.peek();
-      if( next >= '0' && next <= '9' ) {
-        num *= 10;
-        num += (next - '0');
-        Serial.read();
-      }
-      else {
-        return num; 
-      }
-    }
-    return num;
-  }
-
-  
   // ---------------------------------------------------------------------------------
 
   void main()
