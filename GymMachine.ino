@@ -459,7 +459,7 @@ void motorsUpDownTest( int max )
 
 // Workout profiles.
 // Specifies 8 bits resistance value for each cable pull distance in cm.
-
+ 
 #define W1 50
 byte weight_tbl[] = {/*0,   0,   0,   0,   0,   0,   0,   0,*/  0,   0,
                        W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,  W1,
@@ -933,6 +933,7 @@ class Machine {
 
   void prfAdjust( int* add, int* mult )
   { 
+    char prev = 0;
     while( Serial.available() )
     {
       switch( Serial.peek() )
@@ -955,9 +956,24 @@ class Machine {
 
         case '0':
           prf->reset();
-          //*add = 0;
-          //*mult = 4;
           break;
+        
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+          if( prev == '+' || prev == '-' ) {
+            *add = getNum();
+          }
+          else if( prev == '*' || prev == '/' ) {
+            *mult = getNum();
+          }
+          break;          
         
         default:
           // Unexpected input, return
@@ -965,9 +981,29 @@ class Machine {
       }
 
       // Consume input
-      Serial.read();
+      prev = Serial.read();
     }     
   }
+
+  // ---------------------------------------------------------------------------------
+  
+  int getNum() {
+    int num=0;
+    while( Serial.available() )
+    {
+      char next = Serial.peek();
+      if( next >= '0' && next <= '9' ) {
+        num *= 10;
+        num += (next - '0');
+        Serial.read();
+      }
+      else {
+        return num; 
+      }
+    }
+    return num;
+  }
+
   
   // ---------------------------------------------------------------------------------
 
