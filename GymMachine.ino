@@ -1,11 +1,25 @@
+
+// ---------------------------------------------------------------------------------
+// Configurations
+// ---------------------------------------------------------------------------------
+
+// Only one fo these to be defined
+
+// Only move data between Serial and Serial1
+#define UART_PASSTHROUGH
+
+// New FW in Hoverboard (as opposed to original FW)
+//#define NEW_FW
+
+
 // ---------------------------------------------------------------------------------
 // Wiring
 // Teensy UART Tx to be connected to light blue next to black wire on Hoverboard
 // ---------------------------------------------------------------------------------
 
 typedef enum {
-  MOTOR_RIGHT,
-  MOTOR_LEFT
+  MOTOR_RIGHT=0,
+  MOTOR_LEFT=1
 } motor_t;
 
 typedef enum {
@@ -77,6 +91,22 @@ void workout_pref_init( WorkoutPrf *prf ) {
 // ---------------------------- Serial Communication -------------------------------
 // ---------------------------------------------------------------------------------
 
+#ifdef NEW_FW
+void serialWriteFrame( HardwareSerial* serial, int16_t value )
+{
+  char motor = 'r';
+  if( serial == &Serial1 ) {
+    motor = 'l';
+  }
+
+  Serial1.write( 'm' );
+  Serial1.write( motor );
+  Serial1.write( (uint8_t)(value & 0xff) );
+  Serial1.write( (uint8_t)(value >> 8 & 0xff) );
+}
+
+#else
+
 const uint8_t    SERIAL_FRAME_LENGTH = 6;
 const uint16_t   SERIAL_FRAME_START = 256;
 const uint8_t    SERIAL_CONTACT_CLOSED_BYTE = 85;
@@ -96,7 +126,8 @@ void serialWriteFrame( HardwareSerial* serial, int16_t value )
   for( uint8_t i=0; i<6; i++ ) {
     serial->write9bit( uartFrame[i] ); 
   } 
-}  
+}
+#endif
 
 //-------------------------------------------------------------------------
 
@@ -380,6 +411,7 @@ class Motors {
       rightTicks = right.hall.ticks();
       leftTicks = left.hall.ticks();
       Serial.printf("Windback torque=%d\n", torquePrm);
+      serial1Rx(); //rotemc
       for(int i=0; i<100; i++) {
         torqueSmooth( torquePrm );
         right.hall.ticks();
@@ -747,7 +779,7 @@ class Machine {
       leftCable.torqApply( leftTorq );
 */
       //---------------- new ---------------------------------
-      
+            
       if( ++printCnt > 12 ) //12
       {
         printCnt=0;
@@ -936,6 +968,8 @@ class Machine {
 
   bool continueWorkout()
   {
+    serial1Rx(); //rotemc
+    
     if( !Serial.available() ) {
       return true;
     }
@@ -1078,10 +1112,9 @@ class Machine {
 // ---------------------------------------------------------------------------------
 // --------------------------------- Main Loop -------------------------------------
 // ---------------------------------------------------------------------------------
-#define UART_PASSTHROUGH
 
 void setup() {
-  // Initialize serial/USB communication at 9600 bits per second:
+  // Initialize serial/USB communication
   Serial.begin(9600);
   
   // Initialize the UART1 and UART3
@@ -1089,7 +1122,7 @@ void setup() {
     Serial1.begin (9600);
     Serial3.begin (9600);
   #else
-    // 9 bits mode
+    // 9 bits mode to be used with original hoverboard FW
     Serial1.begin (26300, SERIAL_9N1);
     Serial3.begin (26300, SERIAL_9N1);
   #endif  
@@ -1115,6 +1148,12 @@ void setup() {
 }
 
 //---------------------------------------------------------------------------
+
+void serial1Rx() {
+  while (Serial1.available()) {      
+    Serial.write(Serial1.read());
+  }
+}
 
 void uartPassthrough() {
   
