@@ -23,23 +23,6 @@ typedef enum {
   CMD_STOP
 } cmd_t;
 
-/*
-typedef struct {
-  const char*   name;
-  const int     add_pull_init;
-  int           add_pull;
-  const int     add_rel_init;
-  int           add_rel;
-  const int     mult_pull_init;
-  int           mult_pull;
-  const int     mult_rel_init;
-  int           mult_rel;
-  const uint    len;
-  const byte* const tbl;
-  
-} workout_prf_t;
-*/
-
 class WorkoutPrf {
   private:
   const int addPullInit;
@@ -253,7 +236,7 @@ class Hall {
 
     //--------------------------------------------------------------------------------
 
-    // Calculate ticks spped and acceleration
+    // Calculate ticks speed and acceleration
     unsigned long timeCurr = millis();
     if( timeCurr >= prev.time + HALL_INTERVAL ) {
       speedCntr = (speedCntr + (int)((ticksCntr - prev.ticks) * (1000/HALL_INTERVAL)))/2;
@@ -655,14 +638,16 @@ class Cable {
       if( torque != 0 ) {
         torque += prf->addPull;
         torque += dirComp( 0 );
-      }              
+      }
+      //torque -= motor->hall.accel()/4;              
     }
     else {  
       torque *= prf->multRel;
       if( torque != 0 ) {
         torque += prf->addRel;
         torque += dirComp( DIRECTION_COMP );        
-      }           
+      }
+      //torque -= motor->hall.accel()*4;           
     }
     torque -= speed;
     torque -= motor->hall.accel()/4; 
@@ -687,6 +672,7 @@ class Cable {
   inline void torqApply( int torq ) {
     torque = torq;
     motor->torqueSmooth( torq );
+    //rotemc motor->torque( torq );
   }
 
   // ---------------------------------------------------------------------------------
@@ -1092,14 +1078,21 @@ class Machine {
 // ---------------------------------------------------------------------------------
 // --------------------------------- Main Loop -------------------------------------
 // ---------------------------------------------------------------------------------
+#define UART_PASSTHROUGH
 
 void setup() {
   // Initialize serial/USB communication at 9600 bits per second:
   Serial.begin(9600);
   
-  // Initialize the UART1 and UART3 - 9 bits mode
-  Serial1.begin (26300, SERIAL_9N1);
-  Serial3.begin (26300, SERIAL_9N1);
+  // Initialize the UART1 and UART3
+  #ifdef UART_PASSTHROUGH
+    Serial1.begin (9600);
+    Serial3.begin (9600);
+  #else
+    // 9 bits mode
+    Serial1.begin (26300, SERIAL_9N1);
+    Serial3.begin (26300, SERIAL_9N1);
+  #endif  
 
   // Initialize hall sensors
   pinMode(14, INPUT_PULLUP);
@@ -1123,11 +1116,30 @@ void setup() {
 
 //---------------------------------------------------------------------------
 
+void uartPassthrough() {
+  
+  while( 1 ) {
+    // If anything comes in Serial1, read it and write it to USB
+    if (Serial1.available()) {      
+      Serial.write(Serial1.read());
+    }
+
+    // If anything comes in USB, read it and write it to Serial1
+    if (Serial.available()) {    
+      Serial1.write(Serial.read());
+    }
+  }
+}
+
 Machine machine;
 
 void loop()
 {
-  machine.main();
+  #ifdef UART_PASSTHROUGH
+    uartPassthrough();
+  #else
+    machine.main();
+  #endif
   
   //motor_up_down_test( 200 );
   //hallSensorsTest();
