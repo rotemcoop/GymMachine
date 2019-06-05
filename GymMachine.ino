@@ -102,7 +102,7 @@ void serialWriteFrame( HardwareSerial* serial, int16_t value )
   Serial1.write( 'm' );
   Serial1.write( motor );
   Serial1.write( (uint8_t)(value & 0xff) );
-  Serial1.write( (uint8_t)(value >> 8 & 0xff) );
+  Serial1.write( (uint8_t)((value >> 8) & 0xff) );
 }
 
 #else
@@ -1099,7 +1099,16 @@ class Machine {
             
         case 'r':
           prfAdjust( &prf->addRel, &prf->multRel );
-          break;        
+          break;
+
+        case 'q':
+          delay( 200 );
+          Serial1.write( 'q' );
+          delay( 200 );
+          Serial1.write( 'q' );
+          delay( 200 );
+          Serial1.write( 'q' );
+          break;       
         
         default:
           Serial.printf("received invalid input\n");
