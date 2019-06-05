@@ -6,10 +6,10 @@
 // Only one fo these to be defined
 
 // Only move data between Serial and Serial1
-#define UART_PASSTHROUGH
+//#define UART_PASSTHROUGH
 
 // New FW in Hoverboard (as opposed to original FW)
-//#define NEW_FW
+#define NEW_FW
 
 
 // ---------------------------------------------------------------------------------
@@ -1118,7 +1118,7 @@ void setup() {
   Serial.begin(9600);
   
   // Initialize the UART1 and UART3
-  #ifdef UART_PASSTHROUGH
+  #if defined(UART_PASSTHROUGH) || defined(NEW_FW)
     Serial1.begin (9600);
     Serial3.begin (9600);
   #else
@@ -1150,9 +1150,11 @@ void setup() {
 //---------------------------------------------------------------------------
 
 void serial1Rx() {
+  #ifdef NEW_FW
   while (Serial1.available()) {      
     Serial.write(Serial1.read());
   }
+  #endif
 }
 
 void uartPassthrough() {
