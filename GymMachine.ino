@@ -4,13 +4,14 @@
 // ---------------------------------------------------------------------------------
 
 // Only one fo these to be defined
-
-// Only move data between Serial and Serial1
+// Relay Haverboard Serial1 UART communication viae Serial/USB
 //#define UART_PASSTHROUGH
 
 // New FW in Hoverboard (as opposed to original FW)
 #define NEW_FW
 
+// Act as Serial1<->USB adapter
+//#define UART_ADAPTER
 
 // ---------------------------------------------------------------------------------
 // Wiring
@@ -1127,7 +1128,7 @@ void setup() {
   Serial.begin(9600);
   
   // Initialize the UART1 and UART3
-  #if defined(UART_PASSTHROUGH) || defined(NEW_FW)
+  #if defined(NEW_FW)
     Serial1.begin (9600);
     Serial3.begin (9600);
   #else
@@ -1159,7 +1160,7 @@ void setup() {
 //---------------------------------------------------------------------------
 
 void serial1Rx() {
-  #ifdef NEW_FW
+  #ifdef UART_PASSTHROUGH
   while (Serial1.available()) {      
     Serial.write(Serial1.read());
   }
@@ -1185,7 +1186,7 @@ Machine machine;
 
 void loop()
 {
-  #ifdef UART_PASSTHROUGH
+  #ifdef UART_ADAPTER
     uartPassthrough();
   #else
     machine.main();
