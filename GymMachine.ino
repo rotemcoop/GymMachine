@@ -704,15 +704,18 @@ class Cable {
 
   inline void torqApply( int torq ) {
     torque = torq;
-    motor->torqueSmooth( torq );
-    //rotemc motor->torque( torq );
+    motor->torqueSmooth( torq );        
   }
 
   // ---------------------------------------------------------------------------------
   
+  int duty = 0;
   inline void workout() {
     torqCompute();
-    torqApply( torque );
+    if( ++duty > 25 ) { //rotemc
+      duty = 0;
+      torqApply( torque ); 
+    }       
   }  
 };
 
@@ -749,7 +752,7 @@ class Machine {
     while( continueWorkout() )
     {
       //---------------- new ---------------------------------
-      
+      // delay( 10 ); //rotemc
       rightCable.workout();
       leftCable.workout();
       /*      
@@ -1103,7 +1106,6 @@ class Machine {
           break;
 
         case 'q':
-          delay( 200 );
           Serial1.write( 'q' );
           delay( 200 );
           Serial1.write( 'q' );
@@ -1129,8 +1131,8 @@ void setup() {
   
   // Initialize the UART1 and UART3
   #if defined(NEW_FW)
-    Serial1.begin (9600);
-    Serial3.begin (9600);
+    Serial1.begin (19200 /*9600*/);
+    Serial3.begin (19200 /*9600*/);
   #else
     // 9 bits mode to be used with original hoverboard FW
     Serial1.begin (26300, SERIAL_9N1);
@@ -1167,8 +1169,16 @@ void serial1Rx() {
   #endif
 }
 
+//right( &Serial3, 14, 15, 16 ), // Serial and Hall sensors pins for right motor
+//left( &Serial1, 18, 19, 20 ) { // Serial and Hall sensors pins for left motor
+
 void uartPassthrough() {
   
+  Hall rightHall( 14, 15, 16  );
+  Hall leftHall( 18, 19, 20 );
+  int cnt= 0;
+  int printCnt = 0;
+    
   while( 1 ) {
     // If anything comes in Serial1, read it and write it to USB
     if (Serial1.available()) {      
@@ -1178,6 +1188,13 @@ void uartPassthrough() {
     // If anything comes in USB, read it and write it to Serial1
     if (Serial.available()) {    
       Serial1.write(Serial.read());
+    }
+
+    if( ++printCnt > 12 ) //12
+    {
+      printCnt=0;
+      cnt++;
+      //Serial.printf( "cnt=%d, ticks=%d/%d, bad=%d/%d\n", cnt, rightHall.ticks(), leftHall.ticks(), rightHall.badState(), leftHall.badState() );
     }
   }
 }
