@@ -11,7 +11,7 @@
 #define NEW_FW
 
 // Act as Serial1<->USB adapter
-//#define UART_ADAPTER
+#define UART_ADAPTER
 
 // ---------------------------------------------------------------------------------
 // Wiring
@@ -1131,8 +1131,8 @@ void setup() {
   
   // Initialize the UART1 and UART3
   #if defined(NEW_FW)
-    Serial1.begin (19200 /*9600*/);
-    Serial3.begin (19200 /*9600*/);
+    Serial1.begin ( /*19200*/ 9600 );
+    Serial3.begin ( /*19200*/ 9600 );
   #else
     // 9 bits mode to be used with original hoverboard FW
     Serial1.begin (26300, SERIAL_9N1);
@@ -1178,24 +1178,54 @@ void uartPassthrough() {
   Hall leftHall( 18, 19, 20 );
   int cnt= 0;
   int printCnt = 0;
+  int speed=0;
     
   while( 1 ) {
+    
     // If anything comes in Serial1, read it and write it to USB
-    if (Serial1.available()) {      
+    while (Serial1.available()) {      
       Serial.write(Serial1.read());
     }
 
     // If anything comes in USB, read it and write it to Serial1
-    if (Serial.available()) {    
+    while (Serial.available()) {    
       Serial1.write(Serial.read());
     }
-
+/*
     if( ++printCnt > 12 ) //12
     {
       printCnt=0;
       cnt++;
-      //Serial.printf( "cnt=%d, ticks=%d/%d, bad=%d/%d\n", cnt, rightHall.ticks(), leftHall.ticks(), rightHall.badState(), leftHall.badState() );
+      Serial.printf( "cnt=%d, ticks=%d/%d, bad=%d/%d\n", cnt, rightHall.ticks(), leftHall.ticks(), rightHall.badState(), leftHall.badState() );
     }
+*/
+    serialWriteFrame( &Serial1, -300 ); 
+    //delay( 5 );
+    /*
+    cnt++;
+    if( cnt%10 == 0 && cnt < 3000 ) {
+      if( cnt < 400 ) {
+        speed -= 10;        
+      }
+      else if( cnt < 800 ) {
+        speed += 10;
+      }
+      else if( cnt < 1200 ) {
+        speed -= 10;        
+      }
+      else if( cnt < 1600 ) {
+        speed += 10;
+      }
+      else if( cnt < 2000 ) {
+        speed -= 10;        
+      }
+      else if( cnt < 2400 ) {
+        speed += 10;
+      }
+      speed = max( -400, speed );
+      speed = min( 0, speed );
+      serialWriteFrame( &Serial1, speed );             
+    } */
   }
 }
 
