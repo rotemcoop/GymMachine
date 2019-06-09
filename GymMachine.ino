@@ -11,7 +11,7 @@
 #define NEW_FW
 
 // Act as Serial1<->USB adapter
-#define UART_ADAPTER
+//#define UART_ADAPTER
 
 // ---------------------------------------------------------------------------------
 // Wiring
@@ -104,6 +104,7 @@ void serialWriteFrame( HardwareSerial* serial, int16_t value )
   Serial1.write( motor );
   Serial1.write( (uint8_t)(value & 0xff) );
   Serial1.write( (uint8_t)((value >> 8) & 0xff) );
+  Serial1.write( 'e' );
 }
 
 #else
@@ -322,6 +323,7 @@ class Motor {
   private:
   HardwareSerial* serial;
   int16_t valueLast;
+  int16_t valueSent;
 
   public:
   Hall hall;
@@ -331,6 +333,7 @@ class Motor {
          int hallH3Pin ) :
     serial( serialPrm ),
     valueLast( 0 ),
+    valueSent( 0 ),
     hall( hallH1Pin, hallH2Pin, hallH3Pin ) {
     }
 
@@ -345,12 +348,17 @@ class Motor {
   void torqueSmooth( int16_t value ) {
     int diff = value - valueLast;
     if( diff > 0 ) {
-     valueLast += 2;        
+      valueLast += 2;        
     }
     else if( diff < 0 ) {
       valueLast -= 2;     
     }
-    torque( valueLast );  
+
+    if( valueSent != valueLast ) {
+      valueSent = valueLast;
+      torque( valueLast );   
+    }
+     
   }
 
   // ---------------------------------------------------------------------------------
@@ -709,13 +717,13 @@ class Cable {
 
   // ---------------------------------------------------------------------------------
   
-  int duty = 0;
+  //int duty = 0;
   inline void workout() {
     torqCompute();
-    if( ++duty > 25 ) { //rotemc
-      duty = 0;
+    //if( ++duty > 25 ) { //rotemc
+      //duty = 0;
       torqApply( torque ); 
-    }       
+    //}       
   }  
 };
 
@@ -792,7 +800,7 @@ class Machine {
         // Print ticks, distance and torque.
 
         //Serial.printf("direction=%d\n", rightCable.dir() );
-        Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n", \
+        Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n",
                      cnt++, prf->name, prf->addPull, prf->addRel, prf->multPull, prf->multRel, motors.right.hall.ticks(), motors.left.hall.ticks(),
                      rightCable.distRaw(), leftCable.distRaw(), motors.right.hall.speed(), motors.left.hall.speed(),
                      motors.right.hall.accel()/10, motors.left.hall.accel()/10, rightCable.torq(), leftCable.torq() );
@@ -1131,8 +1139,8 @@ void setup() {
   
   // Initialize the UART1 and UART3
   #if defined(NEW_FW)
-    Serial1.begin ( /*19200*/ 9600 );
-    Serial3.begin ( /*19200*/ 9600 );
+    //Serial1.begin ( 9600 );
+    Serial1.begin ( 57600 );    
   #else
     // 9 bits mode to be used with original hoverboard FW
     Serial1.begin (26300, SERIAL_9N1);
@@ -1161,7 +1169,7 @@ void setup() {
 
 //---------------------------------------------------------------------------
 
-void serial1Rx() {
+inline void serial1Rx() {
   #ifdef UART_PASSTHROUGH
   while (Serial1.available()) {      
     Serial.write(Serial1.read());
@@ -1171,7 +1179,7 @@ void serial1Rx() {
 
 //right( &Serial3, 14, 15, 16 ), // Serial and Hall sensors pins for right motor
 //left( &Serial1, 18, 19, 20 ) { // Serial and Hall sensors pins for left motor
-
+/*
 void uartPassthrough() {
   
   Hall rightHall( 14, 15, 16  );
@@ -1191,17 +1199,17 @@ void uartPassthrough() {
     while (Serial.available()) {    
       Serial1.write(Serial.read());
     }
-/*
+
     if( ++printCnt > 12 ) //12
     {
       printCnt=0;
       cnt++;
       Serial.printf( "cnt=%d, ticks=%d/%d, bad=%d/%d\n", cnt, rightHall.ticks(), leftHall.ticks(), rightHall.badState(), leftHall.badState() );
     }
-*/
-    serialWriteFrame( &Serial1, -300 ); 
+
+  //  serialWriteFrame( &Serial1, -300 ); 
     //delay( 5 );
-    /*
+    
     cnt++;
     if( cnt%10 == 0 && cnt < 3000 ) {
       if( cnt < 400 ) {
@@ -1225,10 +1233,10 @@ void uartPassthrough() {
       speed = max( -400, speed );
       speed = min( 0, speed );
       serialWriteFrame( &Serial1, speed );             
-    } */
+    }
   }
 }
-
+*/
 Machine machine;
 
 void loop()
