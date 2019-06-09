@@ -717,13 +717,10 @@ class Cable {
 
   // ---------------------------------------------------------------------------------
   
-  //int duty = 0;
+  
   inline void workout() {
     torqCompute();
-    //if( ++duty > 25 ) { //rotemc
-      //duty = 0;
-      torqApply( torque ); 
-    //}       
+    torqApply( torque );
   }  
 };
 
@@ -760,7 +757,7 @@ class Machine {
     while( continueWorkout() )
     {
       //---------------- new ---------------------------------
-      // delay( 10 ); //rotemc
+      
       rightCable.workout();
       leftCable.workout();
       /*      
@@ -789,7 +786,8 @@ class Machine {
       }
       rightCable.torqApply( rightTorq );
       leftCable.torqApply( leftTorq );
-*/
+      */
+      
       //---------------- new ---------------------------------
             
       if( ++printCnt > 12 ) //12
@@ -797,9 +795,7 @@ class Machine {
         printCnt=0;
         cnt++;
         
-        // Print ticks, distance and torque.
-
-        //Serial.printf("direction=%d\n", rightCable.dir() );
+        // Print ticks, distance, torque, etc.
         Serial.printf("cnt=%d, prf=%s, add=%d/%d, mult=%d/%d, ticks=%d/%d, dist=%d/%d, speed=%d/%d, accel=%d/%d, torque=%d/%d\n",
                      cnt++, prf->name, prf->addPull, prf->addRel, prf->multPull, prf->multRel, motors.right.hall.ticks(), motors.left.hall.ticks(),
                      rightCable.distRaw(), leftCable.distRaw(), motors.right.hall.speed(), motors.left.hall.speed(),
@@ -1140,7 +1136,7 @@ void setup() {
   // Initialize the UART1 and UART3
   #if defined(NEW_FW)
     //Serial1.begin ( 9600 );
-    Serial1.begin ( 57600 );    
+    Serial1.begin ( 57600 );
   #else
     // 9 bits mode to be used with original hoverboard FW
     Serial1.begin (26300, SERIAL_9N1);
