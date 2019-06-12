@@ -11,7 +11,7 @@
 #define NEW_FW
 
 // Act as Serial1<->USB adapter
-//#define UART_ADAPTER
+#define UART_ADAPTER
 
 // ---------------------------------------------------------------------------------
 // Wiring
@@ -703,7 +703,7 @@ class Cable {
       torque = 0;
     }
     
-    torque = max( torque, 0 );
+    torque = max( torque, -400 ); //rotemc
     return torque;
     //motor->torqueSmooth( torque );
   }
@@ -1175,14 +1175,15 @@ inline void serial1Rx() {
 
 //right( &Serial3, 14, 15, 16 ), // Serial and Hall sensors pins for right motor
 //left( &Serial1, 18, 19, 20 ) { // Serial and Hall sensors pins for left motor
-/*
+
 void uartPassthrough() {
-  
+  /*
   Hall rightHall( 14, 15, 16  );
   Hall leftHall( 18, 19, 20 );
   int cnt= 0;
   int printCnt = 0;
   int speed=0;
+  */
     
   while( 1 ) {
     
@@ -1195,7 +1196,7 @@ void uartPassthrough() {
     while (Serial.available()) {    
       Serial1.write(Serial.read());
     }
-
+/*
     if( ++printCnt > 12 ) //12
     {
       printCnt=0;
@@ -1230,9 +1231,10 @@ void uartPassthrough() {
       speed = min( 0, speed );
       serialWriteFrame( &Serial1, speed );             
     }
+    */
   }
 }
-*/
+
 Machine machine;
 
 void loop()
