@@ -1000,6 +1000,7 @@ class Machine {
         return true;
 
       case '-':
+        Serial.read();
         prf->addPull -= 10;
         prf->addRel -= 10;
         return true;  
